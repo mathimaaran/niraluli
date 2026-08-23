@@ -11,25 +11,25 @@
 <body>
 <main id="main-content">
   <section class="hero">
-    <p class="eyebrow">Developer reference · v0.62</p>
+    <p class="eyebrow">Developer reference · v0.64</p>
     <h1>Niraluli <span lang="ta">நிரலுளி</span></h1>
     <p class="lead">A Go-inspired programming language with semantic Tamil keywords, a Go-hosted compiler, and a C/Linux backend.</p>
     <p><span lang="ta">நிரலுளி</span> joins <span lang="ta">நிரல்</span> (program) and <span lang="ta">உளி</span> (chisel): a tool for carving programs.</p>
-    <p><span class="pill">Experimental</span><span class="pill">UTF-8</span><span class="pill">Linux</span><span class="pill">C backend</span><span class="pill">SQL / SQLite</span><span class="pill">Apache-2.0</span></p>
+    <p><span class="pill">Experimental</span><span class="pill">UTF-8</span><span class="pill">Linux</span><span class="pill">C backend</span><span class="pill">SQL / SQLite</span><span class="pill">Files</span><span class="pill">Time</span><span class="pill">Apache-2.0</span></p>
   </section>
 
   <div class="callout warning">
     <strong>Project status</strong>
-    Niraluli is an experimental research compiler, not a production language. v0.62 is implemented end to end on Linux through generated C. The planned native NASM backend has not started. Licensed under <a href="misc.html#license">Apache License 2.0</a>.
+    Niraluli is an experimental research compiler, not a production language. v0.64 is implemented end to end on Linux through generated C. The planned native NASM backend has not started. Licensed under <a href="misc.html#license">Apache License 2.0</a>.
   </div>
 
-  <h2 id="whats-new">What is new in v0.62</h2>
+  <h2 id="whats-new">What is new in v0.64</h2>
   <ul>
-    <li><strong>SQL package <code>தரவுத்தளம்</code>:</strong> shared Tamil API over an internal C backend vtable; SQLite is loaded at runtime via <code>dlopen</code> (no <code>sqlite3.h</code> / <code>-lsqlite3</code> at build time).</li>
-    <li><strong>Prepared statements:</strong> typed binds (1-based), row stepping, and copied column getters (0-based), with explicit finalize/close.</li>
-    <li><strong>Corpus:</strong> <code>corpus/tamil/தரவுத்தளம்/</code> for the API, plus <code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/</code> for an Niraluli REST + React + SQLite full-stack example.</li>
+    <li><strong>Time package <code>நேரம்</code>:</strong> wall clock (<code>இப்போ</code>), sleep (<code>உறங்கு</code>), elapsed (<code>கழித்தது</code>), duration helpers, Unix accessors, and RFC3339 UTC formatting.</li>
+    <li><strong>Named types:</strong> <code>காலம்</code> (nanoseconds) and <code>தருணம்</code> (Unix-nano instant).</li>
+    <li><strong>Corpus:</strong> <code>corpus/tamil/நேரம்/</code>.</li>
   </ul>
-  <p>Full API: <a href="standard-library.html#database">Standard library → SQL database</a>. Setup for the full-stack demo: <code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/SETUP.md</code>.</p>
+  <p>API: <a href="standard-library.html#time">Standard library → Time</a>. Prior highlight: file I/O <code>கோப்பு</code> in v0.63.</p>
 
   <h2 id="documentation">Documentation map</h2>
   <div class="card-grid">
@@ -47,7 +47,7 @@
     </a>
     <a class="card card-link" href="standard-library.html">
       <h3>Standard library</h3>
-      <p>Complete API reference for TCP/UDP <code>வலை</code>, HTTP <code>பரிமாற்றம்</code>, and SQL <code>தரவுத்தளம்</code>.</p>
+      <p>Complete API reference for TCP/UDP <code>வலை</code>, HTTP <code>பரிமாற்றம்</code>, SQL <code>தரவுத்தளம்</code>, files <code>கோப்பு</code>, and time <code>நேரம்</code>.</p>
     </a>
     <a class="card card-link" href="tooling.html">
       <h3>Compiler & tooling</h3>
@@ -87,7 +87,7 @@
         <tr><td>Backend</td><td>Generated C11, compiled by GCC/Clang with <code>-O2</code> by default</td></tr>
         <tr><td>Runtime</td><td>pthread concurrency and stop-the-world conservative mark/sweep GC</td></tr>
         <tr><td>Platforms</td><td>Linux first; IPv4 networking; x86-64 native backend planned</td></tr>
-        <tr><td>Standard library</td><td>TCP/UDP <code>வலை</code>, HTTP <code>பரிமாற்றம்</code>, SQL <code>தரவுத்தளம்</code> (SQLite first)</td></tr>
+        <tr><td>Standard library</td><td>TCP/UDP <code>வலை</code>, HTTP <code>பரிமாற்றம்</code>, SQL <code>தரவுத்தளம்</code>, files <code>கோப்பு</code>, time <code>நேரம்</code></td></tr>
         <tr><td>Visibility</td><td>Private by default; explicit <code>வெளி</code> export marker</td></tr>
         <tr><td>License</td><td>Apache License 2.0 (<code>LICENSE</code> + <code>NOTICE</code>)</td></tr>
       </tbody>

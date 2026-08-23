@@ -492,6 +492,27 @@ MySQL first-party backends can share the Tamil API. Tamil-0.62 deliberately
 excludes pooling, concurrent use of one handle, ORM/reflection, migrations,
 and a third-party driver registry.
 
+## Tamil-0.63 (2026-08-22)
+
+Stdlib package **கோப்பு** adds POSIX file I/O on Linux. Opaque `கை`
+handles are file descriptors. `திற` opens for reading; `உருவாக்கு` creates
+or truncates for writing (mode 0644). `படி` / `எழுது` transfer `[]இருமி8`
+buffers (EOF is `(0, இன்மை)` like network reads). `விடு` closes the handle.
+`படிஅனை` / `எழுதுஅனை` read or write an entire regular file in one call;
+read results are copied into the managed heap. Operational failures return
+`*கோப்பு.பிழை`. Blocking I/O parks for GC. No directories, seek, permissions
+API, or path utilities in this first slice.
+
+## Tamil-0.64 (2026-08-23)
+
+Stdlib package **நேரம்** adds wall-clock time and durations on Linux.
+`காலம்` is nanoseconds; `தருணம்` is a UTC Unix-nanosecond instant.
+`இப்போ` uses `CLOCK_REALTIME`; `உறங்கு` sleeps via `nanosleep` (parks for
+GC); `கழித்தது` is elapsed since an instant. Unit helpers
+(`நானோவினாடி` / `நுண்ணியவினாடி` / `மில்லிவினாடி` / `வினாடி`) build
+durations. `சரம்ஆக்கு` formats RFC3339 UTC with nanoseconds. No timers,
+tickers, time zones beyond UTC formatting, or parse API in this slice.
+
 ## Priority (2026-08-01)
 
 Harden the language (other gaps) **before** starting the NASM x86-64

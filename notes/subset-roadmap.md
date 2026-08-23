@@ -95,6 +95,8 @@ Out of scope for Tamil-0:
 - [x] GC/string runtime polish + `-O2` default
 - [x] HTTP client timeout/redirect options + IPv4 UDP
 - [x] Shared SQL database vtable + SQLite backend
+- [x] POSIX file I/O (`கொணர் "கோப்பு"`)
+- [x] Time / duration (`கொணர் "நேரம்"`)
 
 ## Later growth
 

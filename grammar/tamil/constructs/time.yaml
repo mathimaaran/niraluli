@@ -1,0 +1,22 @@
+status: codegen
+subset: Tamil-0.64
+go_analogue: time
+syntax: |
+  # no new syntax — stdlib package நேரம் (கொணர் "நேரம்")
+semantics: |
+  Tamil-0.64 adds wall-clock time and durations via stdlib package நேரம்.
+  காலம் is a duration in nanoseconds; தருணம் is a UTC Unix-nanosecond instant.
+  இப்போ reads CLOCK_REALTIME; உறங்கு sleeps (parks for GC); கழித்தது is Since.
+  சரம்ஆக்கு formats RFC3339 UTC with nanoseconds. Unit helpers convert counts
+  into காலம். No timers, tickers, locations, or parsing in this first slice.
+examples:
+  - |
+      கொணர் "நேரம்"
+      முன் := நேரம்.இப்போ()
+      நேரம்.உறங்கு(நேரம்.மில்லிவினாடி(20))
+      கழிவு := நேரம்.கழித்தது(முன்)
+      உரை := நேரம்.சரம்ஆக்கு(நேரம்.இப்போ())
+notes:
+  - "No new keywords; நேரம் is a compiler stdlib package."
+  - "Ordered comparisons on காலம்/தருணம் require முழுஎண்(...) conversion."
+  - "Sleep of zero or negative duration is a no-op."

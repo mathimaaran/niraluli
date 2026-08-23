@@ -374,6 +374,106 @@ func TestDatabaseProgram(t *testing.T) {
 	}
 }
 
+func TestFileProgram(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "கோப்பு")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_file_read_all") || !strings.Contains(cSrc, "uli_file_write_all") {
+		t.Fatalf("missing file I/O runtime\n%s", cSrc)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	cmd := exec.Command(bin)
+	cmd.Dir = tmp
+	got, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	out := string(got)
+	wantPrefix := "வணக்கம்\nநிரலுளி\n"
+	if !strings.HasPrefix(out, wantPrefix) {
+		t.Fatalf("got %q want prefix %q\nC:\n%s", out, wantPrefix, cSrc)
+	}
+	if len(out) <= len(wantPrefix) {
+		t.Fatalf("missing open-error message: %q\nC:\n%s", out, cSrc)
+	}
+}
+
+func TestTimeProgram(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "நேரம்")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_time_now_unix_nano") || !strings.Contains(cSrc, "uli_time_sleep") {
+		t.Fatalf("missing time runtime\n%s", cSrc)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	want := "சரி\nயூனிக்ஸ்\nவடிவம்\n42\n1000\n1000000000\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
+	}
+}
+
 func TestHTTPRedirectOptions(t *testing.T) {
 	dir := filepath.Join(root(t), "corpus", "tamil", "வலை_திருப்பு")
 	prog, lerrs := load.LoadProgram([]string{dir})

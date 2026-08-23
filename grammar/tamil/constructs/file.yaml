@@ -1,0 +1,30 @@
+id: file
+status: codegen
+subset: Tamil-0.63
+go_inspired: |
+  f, err := os.Open("demo.txt")
+  data, err := os.ReadFile("demo.txt")
+  err = os.WriteFile("demo.txt", []byte("hi"), 0644)
+tamil_keywords: {}
+tamil_ebnf: |
+  # no new syntax — stdlib package கோப்பு (கொணர் "கோப்பு")
+semantics: >
+  Tamil-0.63 adds POSIX file I/O via stdlib package கோப்பு. Opaque கை
+  handles are file descriptors. திற opens for reading; உருவாக்கு creates
+  or truncates for writing. படி / எழுது transfer []இருமி8; EOF is
+  (0, இன்மை). விடு closes. படிஅனை / எழுதுஅனை cover whole regular files.
+  Failures return *கோப்பு.பிழை. Blocking calls park for GC.
+examples:
+  - tamil: |
+      கொணர் "கோப்பு"
+      ப := கோப்பு.எழுதுஅனை("demo.txt", []இருமி8("வணக்கம்"))
+      தரவு, ப := கோப்பு.படிஅனை("demo.txt")
+      பதிப்பி(சரம்(தரவு))
+    go_equivalent: |
+      _ = os.WriteFile("demo.txt", []byte("வணக்கம்"), 0644)
+      data, _ := os.ReadFile("demo.txt")
+      println(string(data))
+notes:
+  - "No new keywords; கோப்பு is a compiler stdlib package."
+  - "Linux/POSIX only in this slice; no directories, seek, chmod, or glob."
+  - "Handles require explicit விடு; there are no finalizers."

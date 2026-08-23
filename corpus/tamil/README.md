@@ -25,6 +25,8 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `தகவல்_வலை/` | Tamil-0.61 | IPv4 UDP loopback datagrams |
 | `தரவுத்தளம்/` | Tamil-0.62 | shared SQL vtable + SQLite prepared statements |
 | `ஊழியர்_முழுஅடுக்கு/` | Tamil-0.62 | React employee grid + Niraluli REST API + Tamil SQLite (`SETUP.md`) |
+| `கோப்பு/` | Tamil-0.63 | POSIX file open/read/write via `கொணர் "கோப்பு"` |
+| `நேரம்/` | Tamil-0.64 | wall clock, sleep, duration helpers via `கொணர் "நேரம்"` |
 | `செயல்பாடு_புலம்.uli` | Tamil-0.58 | function values in struct and slice fields |
 | `குவியல்.uli` | Tamil-0.60 | indexed conservative GC + flattened string concat |
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Niraluli standard library API reference for TCP, UDP, HTTP, and SQL databases.">
+  <meta name="description" content="Niraluli standard library API reference for TCP, UDP, HTTP, SQL databases, file I/O, and time.">
   <title>Standard Library — Niraluli Documentation</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="docs.js"></script>
@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">API reference</p>
     <h1>Standard library</h1>
-    <p class="lead">Compiler-provided v0.62 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, and <code>தரவுத்தளம்</code> for SQL databases through a shared backend vtable.</p>
+    <p class="lead">Compiler-provided v0.64 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, <code>தரவுத்தளம்</code> for SQL databases through a shared backend vtable, <code>கோப்பு</code> for POSIX file I/O, and <code>நேரம்</code> for wall-clock time and durations.</p>
   </section>
 
   <div class="toc">
@@ -30,6 +30,10 @@
       <li><a href="#database">SQL database API</a></li>
       <li><a href="#database-lifecycle">Database architecture</a></li>
       <li><a href="#database-examples">Database examples</a></li>
+      <li><a href="#file">File I/O API</a></li>
+      <li><a href="#file-examples">File examples</a></li>
+      <li><a href="#time">Time API</a></li>
+      <li><a href="#time-examples">Time examples</a></li>
     </ul>
   </div>
 
@@ -37,9 +41,11 @@
   <p>These package names resolve to compiler standard library directories:</p>
   <pre><code>கொணர் "வலை"
 கொணர் "பரிமாற்றம்"
-கொணர் "தரவுத்தளம்"</code></pre>
+கொணர் "தரவுத்தளம்"
+கொணர் "கோப்பு"
+கொணர் "நேரம்"</code></pre>
   <p>Public <code>.uli</code> declarations define static types, while the C emitter replaces low-level bodies with runtime intrinsics.</p>
-  <p>Network/HTTP failures return <code>*வலை.பிழை</code>; database failures return <code>*தரவுத்தளம்.பிழை</code>. Success returns <code>இன்மை</code>. Always inspect the error before using associated results.</p>
+  <p>Network/HTTP failures return <code>*வலை.பிழை</code>; database failures return <code>*தரவுத்தளம்.பிழை</code>; file failures return <code>*கோப்பு.பிழை</code>. Success returns <code>இன்மை</code>. Always inspect the error before using associated results.</p>
   <pre><code>மதிப்பு, பிழை := வலை.இணை("127.0.0.1:8080")
 எனில் பிழை != இன்மை {
     பதிப்பி(பிழை.குறியீடு)
@@ -398,6 +404,91 @@ _, பிழை = தரவுத்தளம்.அடுத்து(கூற
     <strong>Install SQLite at runtime</strong>
     On Debian/Ubuntu: <code>sudo apt install libsqlite3-0</code>. Confirm with <code>ldconfig -p | grep libsqlite3</code>.
   </div>
+
+  <h2 id="file"><code>கோப்பு</code> — File I/O API</h2>
+  <p>POSIX file open/read/write/close on Linux. Opaque <code>கை</code> is a file descriptor typed as <code>முழுஎண்</code>; use it only with these APIs.</p>
+  <pre><code>கொணர் "கோப்பு"
+
+ப := கோப்பு.எழுதுஅனை("demo.txt", []இருமி8("வணக்கம்"))
+தரவு, ப2 := கோப்பு.படிஅனை("demo.txt")
+க, ப3 := கோப்பு.திற("demo.txt")
+இடம் := ஆக்கு([]இருமி8, 64)
+n, ப4 := கோப்பு.படி(க, இடம்)
+ப5 := கோப்பு.விடு(க)</code></pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>API</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>திற(பாதை)</code></td><td>Open existing path read-only; returns <code>(கை, *பிழை)</code>.</td></tr>
+        <tr><td><code>உருவாக்கு(பாதை)</code></td><td>Create or truncate for write (mode <code>0644</code>).</td></tr>
+        <tr><td><code>படி(கை, []இருமி8)</code></td><td>Read into buffer; EOF is <code>(0, இன்மை)</code>.</td></tr>
+        <tr><td><code>எழுது(கை, []இருமி8)</code></td><td>Write buffer bytes; returns bytes written.</td></tr>
+        <tr><td><code>விடு(கை)</code></td><td>Close the handle.</td></tr>
+        <tr><td><code>படிஅனை</code> / <code>எழுதுஅனை</code></td><td>Whole-file helpers (open, transfer, close).</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li><strong>Errors:</strong> <code>*கோப்பு.பிழை</code> with <code>குறியீடு</code> and <code>செய்தி</code>.</li>
+    <li><strong>Blocking:</strong> I/O parks the calling thread for GC, same pattern as network.</li>
+    <li><strong>Not included:</strong> seek, directories, chmod, mmap, async I/O.</li>
+  </ul>
+
+  <h2 id="file-examples">File examples in the corpus</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>corpus/tamil/கோப்பு/</code></td>
+          <td>Whole-file write/read, create/write/close, open/read, and missing-file error message.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><code>go run ./cmd/uli run corpus/tamil/கோப்பு/</code></pre>
+
+  <h2 id="time"><code>நேரம்</code> — Time API</h2>
+  <p>Wall-clock time and durations on Linux. <code>காலம்</code> is nanoseconds; <code>தருணம்</code> is a UTC Unix-nanosecond instant.</p>
+  <pre><code>கொணர் "நேரம்"
+
+முன் := நேரம்.இப்போ()
+நேரம்.உறங்கு(நேரம்.மில்லிவினாடி(20))
+கழிவு := நேரம்.கழித்தது(முன்)
+உரை := நேரம்.சரம்ஆக்கு(நேரம்.இப்போ())</code></pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>API</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>நானோவினாடி</code> / <code>நுண்ணியவினாடி</code> / <code>மில்லிவினாடி</code> / <code>வினாடி</code></td><td>Build a <code>காலம்</code> from a count.</td></tr>
+        <tr><td><code>இப்போ()</code></td><td>Current UTC wall clock as <code>தருணம்</code> (<code>CLOCK_REALTIME</code>).</td></tr>
+        <tr><td><code>உறங்கு(காலம்)</code></td><td>Sleep; zero/negative is a no-op; parks for GC.</td></tr>
+        <tr><td><code>கழித்தது(தருணம்)</code></td><td>Elapsed <code>காலம்</code> since an instant.</td></tr>
+        <tr><td><code>யூனிக்ஸ்</code> / <code>யூனிக்ஸ்நானோ</code></td><td>Unix seconds or nanoseconds from a <code>தருணம்</code>.</td></tr>
+        <tr><td><code>சரம்ஆக்கு(தருணம்)</code></td><td>RFC3339 UTC with nanoseconds (…Z).</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li><strong>Comparisons:</strong> ordered compares on <code>காலம்</code>/<code>தருணம்</code> need <code>முழுஎண்(...)</code> conversion.</li>
+    <li><strong>Not included:</strong> timers, tickers, locations/time zones beyond UTC formatting, parse.</li>
+  </ul>
+
+  <h2 id="time-examples">Time examples in the corpus</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>corpus/tamil/நேரம்/</code></td>
+          <td>Sleep/elapsed check, Unix instant, RFC3339 format length, duration unit helpers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/</code></pre>
 
   <div class="next-links">
     <a href="concurrency-runtime.html"><span>Previous</span>← Concurrency & runtime</a>

@@ -127,11 +127,11 @@ go run ./cmd/uli run project/தொடக்கம்.uli project/helpers.uli</c
 கொணர் _ "side-effect-package"</code></pre>
   <div class="callout">
     <strong>Compiler standard library</strong>
-    Imports <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, and <code>"தரவுத்தளம்"</code> resolve to built-in packages under <code>stdlib/</code>, not relative folders.
+    Imports <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, and <code>"நேரம்"</code> resolve to built-in packages under <code>stdlib/</code>, not relative folders.
   </div>
 
   <h2 id="errors">Handling operational errors</h2>
-  <p>Networking and HTTP APIs return <code>*வலை.பிழை</code>. Database APIs return <code>*தரவுத்தளம்.பிழை</code>. Success is <code>இன்மை</code>. This is explicit result handling rather than exceptions:</p>
+  <p>Networking and HTTP APIs return <code>*வலை.பிழை</code>. Database APIs return <code>*தரவுத்தளம்.பிழை</code>. File APIs return <code>*கோப்பு.பிழை</code>. Success is <code>இன்மை</code>. This is explicit result handling rather than exceptions:</p>
   <pre><code>கொணர் "வலை"
 
 இணைப்பு, பிழை := வலை.இணை("127.0.0.1:8080")
@@ -150,11 +150,13 @@ go run ./cmd/uli run project/தொடக்கம்.uli project/helpers.uli</c
         <tr><td><code>corpus/tamil/வணக்கம்.uli</code></td><td>Minimal hello program</td></tr>
         <tr><td><code>corpus/tamil/தரவுத்தளம்/</code></td><td>SQLite open, create, prepare, bind, query, and unsupported-driver error</td></tr>
         <tr><td><code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/</code></td><td>Niraluli HTTP REST + SQLite employees DB + React UI (see <code>SETUP.md</code>)</td></tr>
+        <tr><td><code>corpus/tamil/கோப்பு/</code></td><td>File write/read helpers, create/open/close, missing-path error</td></tr>
+        <tr><td><code>corpus/tamil/நேரம்/</code></td><td>Sleep, elapsed duration, Unix instant, RFC3339 format</td></tr>
       </tbody>
     </table>
   </div>
-  <pre><code>go run ./cmd/uli run corpus/tamil/தரவுத்தளம்/</code></pre>
-  <p>API details: <a href="standard-library.html#database">Standard library → SQL database</a>.</p>
+  <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/</code></pre>
+  <p>API details: <a href="standard-library.html#time">Standard library → Time</a>.</p>
 
   <h2 id="editor">Tamil editor setup</h2>
   <ul>

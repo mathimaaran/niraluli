@@ -97,6 +97,8 @@ type emitter struct {
 	needNet       bool // வலை TCP sockets (Tamil-0.53)
 	needHttp      bool // பரிமாற்றம் HTTP (Tamil-0.54)
 	needDB        bool // தரவுத்தளம் SQL database API (Tamil-0.62)
+	needFile      bool // கோப்பு file I/O (Tamil-0.63)
+	needTime      bool // நேரம் wall clock + duration (Tamil-0.64)
 	needArena     bool
 	needUTF8      bool
 	needRuneStr   bool // சரம்(rune) conversion helper
@@ -135,6 +137,8 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	e.markNetNeeds(pkgNames)
 	e.markHttpNeeds(pkgNames)
 	e.markDBNeeds(pkgNames)
+	e.markFileNeeds(pkgNames)
+	e.markTimeNeeds(pkgNames)
 
 	var body strings.Builder
 	for _, p := range pkgs {
@@ -165,7 +169,7 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 		e.needFunc = true
 	}
 	e.markChanNeeds()
-	if e.needArena || e.needConcat || e.needAppend || e.needSlice || e.needMake || e.needRuneStr || e.needStrBytes || e.needMap || e.needDefer || e.needFunc || e.needChan || e.needGo || e.needNet || e.needHttp || e.needDB {
+	if e.needArena || e.needConcat || e.needAppend || e.needSlice || e.needMake || e.needRuneStr || e.needStrBytes || e.needMap || e.needDefer || e.needFunc || e.needChan || e.needGo || e.needNet || e.needHttp || e.needDB || e.needFile || e.needTime {
 		e.needArena = true
 	}
 
@@ -207,6 +211,8 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	e.writeGCRuntime(&b)
 	e.writeNetRuntime(&b)
 	e.writeDBRuntime(&b)
+	e.writeFileRuntime(&b)
+	e.writeTimeRuntime(&b)
 	e.writeChanRuntime(&b)
 	e.writePanicRuntime(&b)
 	if e.needConcat {
@@ -2258,6 +2264,12 @@ func (e *emitter) writeFunc(b *strings.Builder, fn *ast.FuncDecl) {
 		return
 	}
 	if e.writeDBIntrinsic(b, fn) {
+		return
+	}
+	if e.writeFileIntrinsic(b, fn) {
+		return
+	}
+	if e.writeTimeIntrinsic(b, fn) {
 		return
 	}
 	prev := e.curFn

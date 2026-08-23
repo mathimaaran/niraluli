@@ -113,7 +113,7 @@
 }</code></pre>
   <p><code>அலறு</code> accepts <code>சரம்</code>, <code>முழுஎண்</code>, <code>மிதவைஎண்</code>, <code>நிலை</code>, <code>இருமி8</code>, or <code>இருமி32</code>; primitive values are stringified. The panic state is per thread.</p>
   <p><code>மீள்()</code> only stops an active panic when called from deferred execution. It returns the panic string. Otherwise it returns <code>""</code>. An uncaught panic prints Niraluli function frames and aborts the process.</p>
-  <p>There is no interface/any panic payload in v0.62.</p>
+  <p>There is no interface/any panic payload in v0.64.</p>
 
   <h2 id="heap">Managed heap and garbage collection</h2>
   <p>The C backend uses a malloc-backed stop-the-world conservative mark/sweep collector. Allocation is implicit for strings, slice/map growth, closures, channels, defer thunks, networking buffers, and runtime objects.</p>
@@ -134,6 +134,8 @@
     <li>Channel waits park through a GC-aware condition wait.</li>
     <li>TCP, UDP, and HTTP blocking I/O parks the current thread.</li>
     <li>SQL calls through <code>தரவுத்தளம்</code> also block the calling thread while waiting on the native backend.</li>
+    <li>File I/O through <code>கோப்பு</code> parks the calling thread during blocking reads/writes.</li>
+    <li>Sleep through <code>நேரம்.உறங்கு</code> parks the calling thread during <code>nanosleep</code>.</li>
     <li>Register roots are captured with <code>setjmp</code>, required for optimized <code>-O2</code> builds.</li>
   </ul>
 
@@ -145,13 +147,14 @@
   <h2 id="runtime-limits">Runtime guarantees and limitations</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Area</th><th>Current v0.62 behavior</th></tr></thead>
+      <thead><tr><th>Area</th><th>Current v0.64 behavior</th></tr></thead>
       <tbody>
         <tr><td>Scheduling</td><td>One pthread per <code>இழை</code>; no work-stealing scheduler.</td></tr>
         <tr><td>Memory</td><td>Automatic conservative GC; no explicit free in the language.</td></tr>
         <tr><td>Finalizers</td><td>Not implemented. Close network and database handles explicitly or with defer.</td></tr>
         <tr><td>Data races</td><td>No race detector and no automatic synchronization of shared variables.</td></tr>
         <tr><td>Database handles</td><td>Do not share one <code>தரவுத்தளம்</code> connection or statement across <code>இழை</code>; open separate handles per thread.</td></tr>
+        <tr><td>File handles</td><td>Do not share one <code>கோப்பு.கை</code> across <code>இழை</code> without external synchronization.</td></tr>
         <tr><td>Channel faults</td><td>Send on closed channel aborts; nil-channel semantics are limited by runtime implementation.</td></tr>
         <tr><td>Panic payloads</td><td>Primitive values only; recover returns a string.</td></tr>
         <tr><td>Runtime target</td><td>Linux + pthread + generated C (<code>-ldl</code> for SQL <code>dlopen</code>).</td></tr>

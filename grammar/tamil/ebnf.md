@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.62** (2026-08-15) — shared database vtable and SQLite backend.
+Status: **Tamil-0.64** (2026-08-23) — time package நேரம்.
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -321,6 +321,18 @@ a shared connection/prepared-statement API over an internal C backend vtable.
 SQLite (`"sqlite"` / `"sqlite3"`) is the first backend. Typed bind and column
 functions cover null, integer, float, UTF-8 text, and byte blobs. See
 `constructs/database.yaml`.
+
+## File I/O (Tamil-0.63)
+
+No new syntax. Stdlib package `கோப்பு` (`கொணர் "கோப்பு"`): opaque `கை`
+handles, `திற` / `உருவாக்கு` / `படி` / `எழுது` / `விடு`, plus whole-file
+`படிஅனை` / `எழுதுஅனை`. See `constructs/file.yaml`.
+
+## Time (Tamil-0.64)
+
+No new syntax. Stdlib package `நேரம்` (`கொணர் "நேரம்"`): `காலம்` /
+`தருணம்`, `இப்போ` / `உறங்கு` / `கழித்தது`, Unix helpers, RFC3339
+`சரம்ஆக்கு`, and duration unit constructors. See `constructs/time.yaml`.
 
 ## Entry convention
 

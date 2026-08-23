@@ -1,12 +1,12 @@
 # Tamil keyword glossary
 
 status: active
-subset: Tamil-0.62
+subset: Tamil-0.64
 style: semantic Tamil
 note: >
-  Tamil-0 remains frozen as the base. Tamil-0.62 adds the stdlib package
-  தரவுத்தளம் and SQLite backend (no new keywords). Further breaking changes
-  need a subset bump and a dated note in notes/design-decisions.md.
+  Tamil-0 remains frozen as the base. Tamil-0.64 adds the stdlib package
+  நேரம் for wall-clock time and durations (no new keywords). Further breaking
+  changes need a subset bump and a dated note in notes/design-decisions.md.
 
 keywords:
   - go: package
