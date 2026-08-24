@@ -146,6 +146,7 @@
         <tr><td>0.64</td><td>Time package (<code>நேரம்</code>): wall clock, sleep, duration helpers, RFC3339 UTC format, corpus sample.</td></tr>
         <tr><td>0.65</td><td>Formatting package (<code>வடிவம்</code>): <code>%s</code>/<code>%%</code> over strings, scalar helpers, join, corpus sample.</td></tr>
         <tr><td>0.66</td><td>Variadic parameters (<code>...T</code>); <code>வடிவம்.வடிவமை</code> uses <code>...சரம்</code>.</td></tr>
+        <tr><td>0.67</td><td>Compile-time constants (<code>மாறிலி</code>): package/block scalars, constant expressions, inlined emit.</td></tr>
       </tbody>
     </table>
   </div>
@@ -155,7 +156,7 @@
   <ul>
     <li>No interfaces, interface values, constraints, generic types, or generic methods.</li>
     <li>No top-level variables.</li>
-    <li>No bitwise operator family, richer integer widths, complex numbers, or constants system comparable to Go.</li>
+    <li>No bitwise operator family, richer integer widths, or complex numbers; constants lack <code>iota</code> and parenthesized groups.</li>
     <li>No directory/seek/chmod filesystem APIs beyond basic <code>கோப்பு</code> open/read/write; no timers/tickers/parse beyond basic <code>நேரம்</code>; formatting is <code>%s</code>-over-strings only (no typed <code>%d</code>); no <code>slice...</code> expand; no JSON, crypto, or TLS packages.</li>
     <li>Panic/recover payload is string-oriented, not arbitrary values.</li>
   </ul>
@@ -194,7 +195,7 @@
   <p>The current C backend remains the semantic reference while the native backend begins.</p>
 
   <h2 id="public">Public project status</h2>
-  <p>Niraluli v0.66 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
+  <p>Niraluli v0.67 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
   <p>Licensing: the repository is under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> (<code>LICENSE</code> + <code>NOTICE</code>). See also <a href="misc.html#license">Misc → License</a>.</p>
   <p>Remaining public-release hygiene:</p>
   <ul>

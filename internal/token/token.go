@@ -18,6 +18,7 @@ const (
 	PACKAGE    // தொகுப்பு
 	FUNC       // செயல்பாடு
 	VAR        // மாறி
+	CONST      // மாறிலி (Tamil-0.67)
 	IF         // எனில்
 	ELSE       // இல்லையேல்
 	RETURN     // திருப்பு
@@ -99,6 +100,7 @@ var kindNames = [...]string{
 	PACKAGE:   "PACKAGE",
 	FUNC:      "FUNC",
 	VAR:       "VAR",
+	CONST:     "CONST",
 	IF:        "IF",
 	ELSE:      "ELSE",
 	RETURN:    "RETURN",
@@ -180,6 +182,7 @@ var Keywords = map[string]Kind{
 	"தொகுப்பு":  PACKAGE,
 	"செயல்பாடு": FUNC,
 	"மாறி":      VAR,
+	"மாறிலி":    CONST,
 	"எனில்":     IF,
 	"இல்லையேல்": ELSE,
 	"திருப்பு":  RETURN,

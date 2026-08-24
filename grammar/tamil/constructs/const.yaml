@@ -1,0 +1,25 @@
+status: codegen
+subset: Tamil-0.67
+go_analogue: const
+syntax: |
+  ConstDecl = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
+  # Package-level and block-level. Optional வெளி for package export.
+  # No parenthesized const ( … ) groups; no iota in this subset.
+semantics: |
+  Tamil-0.67 adds Go-style compile-time constants. RHS must be a constant
+  expression (literals, other consts, unary +/-/!, arithmetic, string +,
+  comparisons). Allowed types: முழுஎண், மிதவைஎண், நிலை, சரம், இருமி8,
+  இருமி32 (and defined types with those underlyings). Keyword மாறிலி is
+  distinct from நிலை (bool type). Values are folded and inlined by the
+  C emitter. Assigning to a constant is an error.
+examples:
+  - |
+      மாறிலி அதிகம் முழுஎண் = 10
+      மாறிலி வாழ்த்து = "வணக்கம்"
+      செயல்பாடு தொடக்கம்() {
+          மாறிலி இரட்டி = அதிகம் * 2
+          பதிப்பி(இரட்டி)
+      }
+notes:
+  - "Do not reuse நிலை for const — frozen as bool type since Tamil-0."
+  - "iota and const ( … ) blocks deferred."

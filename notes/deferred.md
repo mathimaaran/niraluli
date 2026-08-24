@@ -13,7 +13,7 @@ Update when a subset ships (strike or move items) or when a construct card recor
 | Interfaces | Only if earned (e.g. Go-style `Handler`) | method.yaml |
 | Generic types / constraints | After interfaces earn a place | generics.yaml |
 
-Shipped: 0.11–0.66 (through variadic parameters `...T`).
+Shipped: 0.11–0.67 (through compile-time constants `மாறிலி`).
 
 ## Backlog leftovers (pre-NASM optional; keep out of critical path)
 
@@ -71,6 +71,8 @@ Shipped: 0.11–0.66 (through variadic parameters `...T`).
 | ~~Time / duration~~ | Tamil-0.64 `கொணர் "நேரம்"` | time.yaml |
 | ~~fmt-style formatting~~ | Tamil-0.65 `கொணர் "வடிவம்"` | fmt.yaml |
 | ~~Variadic parameters~~ | Tamil-0.66 `...T` | variadic.yaml |
+| ~~Compile-time constants~~ | Tamil-0.67 `மாறிலி` | const.yaml |
+| `iota` / const `( … )` groups | After மாறிலி base | const.yaml |
 | Goroutines / channels | Tamil-0.48 on C (pthread); see goroutine.yaml | goroutine.yaml |
 | NASM + custom IR | IR when NASM begins | design-decisions |
 | Windows / macOS primary targets | Linux-first | Non-goals |

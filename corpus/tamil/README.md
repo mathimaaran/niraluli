@@ -29,6 +29,7 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `நேரம்/` | Tamil-0.64 | wall clock, sleep, duration helpers via `கொணர் "நேரம்"` |
 | `வடிவமைப்பு/` | Tamil-0.66 | fmt-style `%s` formatting via `கொணர் "வடிவம்"` (variadic) |
 | `பலவாதங்கள்.uli` | Tamil-0.66 | variadic `...முழுஎண்` sum |
+| `மாறிலி.uli` | Tamil-0.67 | package + local compile-time constants |
 | `செயல்பாடு_புலம்.uli` | Tamil-0.58 | function values in struct and slice fields |
 | `குவியல்.uli` | Tamil-0.60 | indexed conservative GC + flattened string concat |
 

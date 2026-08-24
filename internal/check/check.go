@@ -305,6 +305,8 @@ type Info struct {
 	// Locals/params that must be arena-promoted because a nested closure captures them.
 	PromoteInFunc map[*ast.FuncDecl]map[string]Type
 	PromoteInLit  map[*ast.FuncLit]map[string]Type
+	// ConstExprs maps expressions that fold to compile-time constants (Tamil-0.67).
+	ConstExprs map[ast.Expr]ConstValue
 }
 
 // MonoInst is one monomorphized instantiation of a generic function.
@@ -364,8 +366,9 @@ func (s *funcSig) resultType(c *Checker) Type {
 }
 
 type scope struct {
-	parent *scope
-	vars   map[string]Type
+	parent    *scope
+	vars      map[string]Type
+	constVals map[string]ConstValue // names also present in vars
 }
 
 func (s *scope) lookup(name string) (Type, bool) {
@@ -1551,6 +1554,8 @@ func (c *Checker) checkStmt(s ast.Stmt) {
 	switch s := s.(type) {
 	case *ast.VarDecl:
 		c.checkVarDecl(s)
+	case *ast.ConstDecl:
+		c.checkConstDecl(s)
 	case *ast.ShortVarDecl:
 		c.checkShortVar(s)
 	case *ast.AssignStmt:
@@ -1892,6 +1897,10 @@ func (c *Checker) checkAssignOne(lhs ast.Expr, want Type, src ast.Expr) {
 func (c *Checker) checkAssignTarget(lhs ast.Expr) Type {
 	switch lhs := lhs.(type) {
 	case *ast.Ident:
+		if c.isConstIdent(lhs.Name) {
+			c.error(lhs.Pos(), "cannot assign to constant %s", lhs.Name)
+			return TypeInvalid
+		}
 		lt, ok := c.scope.lookup(lhs.Name)
 		if !ok {
 			c.error(lhs.Pos(), "undeclared variable: %s", lhs.Name)
@@ -1914,16 +1923,19 @@ func (c *Checker) checkAssignTarget(lhs ast.Expr) Type {
 	}
 }
 
-func isAddressable(e ast.Expr) bool {
+func (c *Checker) isAddressable(e ast.Expr) bool {
 	switch e := e.(type) {
 	case *ast.Ident:
-		return e.Name != "_"
+		if e.Name == "_" || c.isConstIdent(e.Name) {
+			return false
+		}
+		return true
 	case *ast.IndexExpr, *ast.SelectorExpr:
 		return true
 	case *ast.UnaryExpr:
 		return e.Op == token.MUL
 	case *ast.ParenExpr:
-		return isAddressable(e.X)
+		return c.isAddressable(e.X)
 	default:
 		return false
 	}
@@ -2161,9 +2173,14 @@ func (c *Checker) checkExpr(e ast.Expr) Type {
 		var declScope *scope
 		t, declScope, ok = c.scope.lookupScope(e.Name)
 		if ok {
-			if len(c.litStack) > 0 {
+			if v, cok := c.scope.lookupConst(e.Name); cok {
+				c.recordConstExpr(e, v)
+			} else if len(c.litStack) > 0 {
 				c.noteCapture(e.Name, t, declScope)
 			}
+		} else if pc, pok := c.lookupPkgConst(e.Name); pok {
+			t = pc.typ
+			c.recordConstExpr(e, pc.val)
 		} else {
 			if c.cur != nil {
 				if sig := c.cur.funcs[e.Name]; sig != nil {
@@ -2230,7 +2247,7 @@ func (c *Checker) checkExpr(e ast.Expr) Type {
 		case token.AND:
 			if xt == TypeInvalid {
 				t = TypeInvalid
-			} else if !isAddressable(e.X) {
+			} else if !c.isAddressable(e.X) {
 				c.error(e.Pos(), "cannot take address of %T", e.X)
 				t = TypeInvalid
 			} else {
@@ -2442,7 +2459,15 @@ func (c *Checker) checkSelectorExpr(e *ast.SelectorExpr) Type {
 				}
 				return ft
 			}
-			c.error(e.Sel.Pos(), "package %s has no function %s", id.Name, e.Sel.Name)
+			if pc, ok := imp.consts[e.Sel.Name]; ok {
+				if !pc.exported {
+					c.error(e.Sel.Pos(), "constant %s.%s is not exported (need வெளி)", imp.name, e.Sel.Name)
+					return TypeInvalid
+				}
+				c.recordConstExpr(e, pc.val)
+				return pc.typ
+			}
+			c.error(e.Sel.Pos(), "package %s has no exported name %s", id.Name, e.Sel.Name)
 			return TypeInvalid
 		}
 	}
@@ -2480,7 +2505,7 @@ func (c *Checker) checkSelectorExpr(e *ast.SelectorExpr) Type {
 		}
 		takeAddr := false
 		if mi.RecvIsPtr {
-			if !recvIsPtr && !isAddressable(e.X) {
+			if !recvIsPtr && !c.isAddressable(e.X) {
 				c.error(e.X.Pos(), "cannot take method value %s with pointer receiver on non-addressable value", mi.Name)
 				return TypeInvalid
 			}
@@ -3489,7 +3514,7 @@ func (c *Checker) checkMethodCallKnown(e *ast.CallExpr, sel *ast.SelectorExpr, x
 		return TypeInvalid
 	}
 	if mi.RecvIsPtr {
-		if !isPointer(xt) && !isAddressable(sel.X) {
+		if !isPointer(xt) && !c.isAddressable(sel.X) {
 			c.error(sel.X.Pos(), "cannot call pointer method %s on non-addressable value", mi.Name)
 		}
 	}

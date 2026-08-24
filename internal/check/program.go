@@ -14,6 +14,7 @@ type pkgState struct {
 	types      map[string]Type
 	typeExp    map[string]bool // name → வெளி
 	aliases    map[string]bool // name → pending/resolved type alias
+	consts     map[string]*pkgConst
 	imports    map[string]*pkgState
 	importUsed map[string]bool // local import qualifier referenced
 }
@@ -49,6 +50,7 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 		Closures:      map[*ast.FuncLit]*ClosureInfo{},
 		PromoteInFunc: map[*ast.FuncDecl]map[string]Type{},
 		PromoteInLit:  map[*ast.FuncLit]map[string]Type{},
+		ConstExprs:    map[ast.Expr]ConstValue{},
 	}
 	c := &Checker{
 		scope:         &scope{vars: map[string]Type{}},
@@ -80,6 +82,7 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 			types:      map[string]Type{},
 			typeExp:    map[string]bool{},
 			aliases:    map[string]bool{},
+			consts:     map[string]*pkgConst{},
 			imports:    map[string]*pkgState{},
 			importUsed: map[string]bool{},
 		}
@@ -141,6 +144,10 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 				c.error(d.Pos(), "top-level variables not supported in Tamil-0")
 			}
 		}
+	}
+	for _, f := range merged {
+		c.cur = c.pkgs[f.Package.Name.Name]
+		c.collectPackageConsts(f)
 	}
 	for _, f := range merged {
 		c.cur = c.pkgs[f.Package.Name.Name]

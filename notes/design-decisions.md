@@ -530,6 +530,14 @@ name has type `[]T`. Call sites may pass zero or more trailing `T` values; the
 emitter packs them into a temporary slice. `slice...` expand is deferred.
 `வடிவம்.வடிவமை` now takes `...சரம்` (removed fixed-arity `வடிவமை1`/`2`/`3`).
 
+## Tamil-0.67 (2026-08-23)
+
+**Compile-time constants** use keyword `மாறிலி` (not `நிலை`, which remains
+the bool type). Package- and block-level consts of scalar types with constant
+expressions; `வெளி` exports package consts. No `iota` or parenthesized const
+groups yet. Values are folded and inlined by the C emitter.
+See `constructs/const.yaml` and `corpus/tamil/மாறிலி.uli`.
+
 ## Priority (2026-08-01)
 
 Harden the language (other gaps) **before** starting the NASM x86-64
@@ -558,6 +566,7 @@ Phase 1 progress: lexer, parser, typecheck, C emit (`emit`/`build`/`run`). NASM 
 | bool type | நிலை | 2026-08-01 freeze |
 | true / false | மெய் / பொய் | 2026-08-01 freeze |
 | short declare | `:=` (Go-style, with மாறி) | 2026-07-25 |
+| const | மாறிலி | Tamil-0.67 |
 | if / else | எனில் / இல்லையேல் | 2026-07-25 |
 | return | திருப்பு | 2026-07-25 |
 | print | பதிப்பி | 2026-07-25 |

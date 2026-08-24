@@ -107,17 +107,19 @@ func (p *Parser) parseFile() *ast.File {
 			decls = append(decls, p.parseFuncDecl(exported, exportPos))
 		case token.VAR:
 			decls = append(decls, p.parseVarDecl(exported, exportPos))
+		case token.CONST:
+			decls = append(decls, p.parseConstDecl(exported, exportPos))
 		case token.TYPE:
 			decls = append(decls, p.parseTypeDecl(exported, exportPos))
 		case token.IMPORT:
 			p.errorExpected("கொணர் must appear before other declarations")
 			p.next()
 		case token.EXPORT:
-			p.errorExpected("வெளி must precede செயல்பாடு, வகை, or மாறி")
+			p.errorExpected("வெளி must precede செயல்பாடு, வகை, மாறி, or மாறிலி")
 			p.next()
 		default:
 			if exported {
-				p.errorExpected("வெளி must precede செயல்பாடு, வகை, or மாறி")
+				p.errorExpected("வெளி must precede செயல்பாடு, வகை, மாறி, or மாறிலி")
 			} else {
 				p.errorExpected(fmt.Sprintf("expected declaration, got %s", p.tok.Kind))
 			}
@@ -507,6 +509,28 @@ func (p *Parser) parseVarDecl(exported bool, exportPos token.Pos) *ast.VarDecl {
 	return &ast.VarDecl{TokPos: pos, Exported: exported, Names: names, Type: typ, Values: values}
 }
 
+// parseConstDecl parses மாறிலி names [ Type ] = values.
+func (p *Parser) parseConstDecl(exported bool, exportPos token.Pos) *ast.ConstDecl {
+	pos := p.tok.Pos
+	if exported {
+		pos = exportPos
+	}
+	p.expect(token.CONST)
+	names := p.parseIdentList()
+	var typ ast.TypeExpr
+	// Optional type: present when next token is a type start and not "=".
+	if p.tok.Kind != token.ASSIGN {
+		typ = p.parseType()
+	}
+	if p.tok.Kind != token.ASSIGN {
+		p.errorExpected("மாறிலி requires = initializer")
+		return &ast.ConstDecl{TokPos: pos, Exported: exported, Names: names, Type: typ}
+	}
+	p.next()
+	values := p.parseExprList()
+	return &ast.ConstDecl{TokPos: pos, Exported: exported, Names: names, Type: typ, Values: values}
+}
+
 func (p *Parser) parseIdentList() []*ast.Ident {
 	names := []*ast.Ident{p.parseIdent()}
 	for p.tok.Kind == token.COMMA {
@@ -535,6 +559,8 @@ func (p *Parser) parseStmt() ast.Stmt {
 	switch p.tok.Kind {
 	case token.VAR:
 		return p.parseVarDecl(false, p.tok.Pos)
+	case token.CONST:
+		return p.parseConstDecl(false, p.tok.Pos)
 	case token.IF:
 		return p.parseIfStmt()
 	case token.SWITCH:

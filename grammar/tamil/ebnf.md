@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.66** (2026-08-23) — variadic parameters `...T`.
+Status: **Tamil-0.67** (2026-08-23) — compile-time constants `மாறிலி`.
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -10,7 +10,7 @@ PackageClause = "தொகுப்பு" PackageName .
 PackageName   = identifier .
 ImportDecl    = "கொணர்" [ identifier ] string_lit .
 
-TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | VarDecl | TypeDecl ) .
+TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | ConstDecl | VarDecl | TypeDecl ) .
 
 TypeDecl   = "வகை" identifier ( "=" Type | TypeLit | Type ) .
 TypeLit    = StructType .
@@ -40,6 +40,7 @@ QualifiedName = [ identifier "." ] identifier .
 PointerType   = "*" Type .
 
 VarDecl       = "மாறி" IdentifierList Type [ "=" ExpressionList ] .
+ConstDecl     = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
 ShortVarDecl  = IdentifierList ":=" ExpressionList .
 IdentifierList = identifier { "," identifier } .
 ExpressionList = Expression { "," Expression } .
@@ -47,7 +48,7 @@ ExpressionList = Expression { "," Expression } .
 Block         = "{" StatementList "}" .
 StatementList = { Statement } .
 
-Statement     = VarDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
+Statement     = ConstDecl | VarDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
 DeferStmt     = "தள்ளிவை" ( CallExpr | identifier | SelectorExpr ) .
 SimpleStmt    = ExpressionStmt | Assignment | ShortVarDecl .
 ExpressionStmt = Expression .
@@ -345,6 +346,13 @@ See `constructs/fmt.yaml`.
 Final parameter may be `பெயர் ...வகை` (Go-style). Inside the function the
 parameter has type `[]வகை`. Calls pack zero or more trailing args into that
 slice. See `constructs/variadic.yaml`. `வடிவம்.வடிவமை` uses `...சரம்`.
+
+## Constants (Tamil-0.67)
+
+`மாறிலி` declares compile-time constants at package or block scope.
+RHS must be a constant expression; values are folded and inlined.
+No `iota` and no parenthesized `மாறிலி ( … )` groups yet.
+See `constructs/const.yaml`. Keyword is **not** `நிலை` (bool type).
 
 ## Entry convention
 

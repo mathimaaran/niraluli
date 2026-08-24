@@ -99,6 +99,7 @@ Out of scope for Tamil-0:
 - [x] Time / duration (`கொணர் "நேரம்"`)
 - [x] fmt-style formatting (`கொணர் "வடிவம்"`)
 - [x] Variadic parameters (`...T`)
+- [x] Compile-time constants (`மாறிலி`)
 
 ## Later growth
 

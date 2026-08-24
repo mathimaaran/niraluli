@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Niraluli v0.66 language reference.">
+  <meta name="description" content="Niraluli v0.67 language reference.">
   <title>Language Reference — Niraluli Documentation</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="docs.js"></script>
@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">Reference</p>
     <h1>Language reference</h1>
-    <p class="lead">The implemented v0.66 source language: lexical rules, types, declarations, expressions, control flow, aggregates, functions (including variadic <code>...T</code>), packages, and built-ins.</p>
+    <p class="lead">The implemented v0.67 source language: lexical rules, types, declarations (including <code>மாறிலி</code> constants), expressions, control flow, aggregates, functions (including variadic <code>...T</code>), packages, and built-ins.</p>
   </section>
 
   <div class="toc">
@@ -22,7 +22,7 @@
       <li><a href="#lexical">Lexical rules</a></li>
       <li><a href="#keywords">Keywords</a></li>
       <li><a href="#types">Types and zero values</a></li>
-      <li><a href="#variables">Variables and assignment</a></li>
+      <li><a href="#variables">Variables, constants, and assignment</a></li>
       <li><a href="#operators">Expressions and operators</a></li>
       <li><a href="#control">Control flow</a></li>
       <li><a href="#functions">Functions and returns</a></li>
@@ -60,7 +60,7 @@
       <thead><tr><th>Category</th><th>Niraluli spelling</th><th>Meaning</th></tr></thead>
       <tbody>
         <tr><td>Packages</td><td><code>தொகுப்பு</code>, <code>கொணர்</code>, <code>வெளி</code></td><td>package, import, exported visibility</td></tr>
-        <tr><td>Declarations</td><td><code>செயல்பாடு</code>, <code>மாறி</code>, <code>வகை</code>, <code>அமைப்பு</code></td><td>function, variable, type, struct</td></tr>
+        <tr><td>Declarations</td><td><code>செயல்பாடு</code>, <code>மாறி</code>, <code>மாறிலி</code>, <code>வகை</code>, <code>அமைப்பு</code></td><td>function, variable, constant, type, struct</td></tr>
         <tr><td>Control flow</td><td><code>எனில்</code>, <code>இல்லையேல்</code>, <code>சுழல்</code>, <code>ஒவ்வொரு</code>, <code>முறி</code>, <code>தொடர்</code>, <code>திருப்பு</code></td><td>if/case, else, loop, range, break, continue, return</td></tr>
         <tr><td>Switch</td><td><code>திசைவி</code>, <code>மற்றபடி</code></td><td>switch and default</td></tr>
         <tr><td>Primitive types</td><td><code>முழுஎண்</code>, <code>நிலை</code>, <code>மிதவைஎண்</code>, <code>சரம்</code>, <code>இருமி8</code>, <code>இருமி32</code></td><td>int64, bool, float64, string, byte, rune</td></tr>
@@ -103,14 +103,18 @@
 இருமிகள் := []இருமி8("நிரலுளி")
 மீண்டும் := சரம்(இருமிகள்)</code></pre>
 
-  <h2 id="variables">Variables and assignment</h2>
+  <h2 id="variables">Variables, constants, and assignment</h2>
   <pre><code>மாறி எண்ணிக்கை முழுஎண்
 மாறி பெயர் சரம் = "நிரலுளி"
 வயது := 1
 
+மாறிலி அதிகம் முழுஎண் = 10
+மாறிலி வாழ்த்து = "வணக்கம்"
+
 எண்ணிக்கை = 10
 அ, ஆ = ஆ, அ</code></pre>
   <p><code>:=</code> infers types and must introduce at least one new name in its scope. Parallel assignment evaluates right-hand values before assignment. Multiple-return calls unpack through <code>:=</code> or <code>=</code>.</p>
+  <p><code>மாறிலி</code> declares compile-time constants (package or block scope). The initializer must be a constant expression; assigning to a constant is an error. <code>iota</code> and parenthesized const groups are not in v0.67.</p>
   <p>The blank identifier <code>_</code> discards values:</p>
   <pre><code>மதிப்பு, _ := கணக்கு()
 _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pre>
@@ -298,8 +302,8 @@ _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pr
     <li>All files in one package use the same package name.</li>
     <li>Imports resolve by directory; imported calls use a qualifier.</li>
     <li>Unused non-blank imports are errors. Import cycles report their path.</li>
-    <li>Top-level functions/types and struct fields require <code>வெளி</code> for access by another package.</li>
-    <li>Top-level variables are not supported in v0.66.</li>
+    <li>Top-level functions/types/constants and struct fields require <code>வெளி</code> for access by another package.</li>
+    <li>Top-level variables are not supported in v0.67; use <code>மாறிலி</code> for package-level constants.</li>
     <li>Final function parameters may be variadic (<code>...T</code>); see Tamil-0.66.</li>
     <li>Compiler packages <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, <code>"நேரம்"</code>, and <code>"வடிவம்"</code> resolve from <code>stdlib/</code>. See the <a href="standard-library.html">standard library</a> reference.</li>
   </ul>

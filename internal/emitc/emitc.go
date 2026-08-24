@@ -3,6 +3,7 @@ package emitc
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"niraluli/internal/ast"
@@ -3198,6 +3199,9 @@ func (e *emitter) writeReturnWithDefer(b *strings.Builder, s *ast.ReturnStmt, le
 
 func (e *emitter) writeStmt(b *strings.Builder, s ast.Stmt, level int) {
 	switch s := s.(type) {
+	case *ast.ConstDecl:
+		// Compile-time constants are inlined at use sites (Tamil-0.67).
+		return
 	case *ast.VarDecl:
 		if usesSliceType(s.Type) {
 			e.needSlice = true
@@ -3929,7 +3933,35 @@ func (e *emitter) concreteType(t check.Type) check.Type {
 	return t
 }
 
+func (e *emitter) writeConstValue(b *strings.Builder, v check.ConstValue) {
+	switch v.Kind {
+	case check.ConstInt:
+		b.WriteString(strconv.FormatInt(v.Int, 10))
+		b.WriteString("LL")
+	case check.ConstFloat:
+		b.WriteString(strconv.FormatFloat(v.Float, 'g', -1, 64))
+	case check.ConstBool:
+		if v.Bool {
+			b.WriteByte('1')
+		} else {
+			b.WriteByte('0')
+		}
+	case check.ConstString:
+		b.WriteByte('"')
+		b.WriteString(escapeCString(v.Str))
+		b.WriteByte('"')
+	default:
+		b.WriteString("0")
+	}
+}
+
 func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
+	if e.info != nil && e.info.ConstExprs != nil {
+		if v, ok := e.info.ConstExprs[expr]; ok && v.Kind != check.ConstInvalid {
+			e.writeConstValue(b, v)
+			return
+		}
+	}
 	switch expr := expr.(type) {
 	case *ast.Ident:
 		if e.loopIter != nil {

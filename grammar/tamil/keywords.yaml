@@ -1,12 +1,12 @@
 # Tamil keyword glossary
 
 status: active
-subset: Tamil-0.66
+subset: Tamil-0.67
 style: semantic Tamil
 note: >
-  Tamil-0 remains frozen as the base. Tamil-0.66 adds Go-style variadic
-  parameters (...T) with no new keywords. Further breaking changes need a
-  subset bump and a dated note in notes/design-decisions.md.
+  Tamil-0 remains frozen as the base. Tamil-0.67 adds compile-time constants
+  (மாறிலி). Further breaking changes need a subset bump and a dated note in
+  notes/design-decisions.md.
 
 keywords:
   - go: package
@@ -28,6 +28,11 @@ keywords:
   - go: var
     tamil: மாறி
     token: VAR
+
+  - go: const
+    tamil: மாறிலி
+    token: CONST
+    notes: "Tamil-0.67 — distinct from நிலை (bool type)"
 
   - go: if
     tamil: எனில்

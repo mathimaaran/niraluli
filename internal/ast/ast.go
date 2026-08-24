@@ -267,6 +267,20 @@ func (d *VarDecl) Pos() token.Pos { return d.TokPos }
 func (d *VarDecl) declNode()      {}
 func (d *VarDecl) stmtNode()      {}
 
+// ConstDecl is மாறிலி names [ Type ] = values (Tamil-0.67).
+// Type may be nil when inferred from Values.
+type ConstDecl struct {
+	TokPos   token.Pos
+	Exported bool // வெளி (package-level)
+	Names    []*Ident
+	Type     TypeExpr // optional
+	Values   []Expr   // required; same count as Names
+}
+
+func (d *ConstDecl) Pos() token.Pos { return d.TokPos }
+func (d *ConstDecl) declNode()      {}
+func (d *ConstDecl) stmtNode()      {}
+
 // Stmt is a statement.
 type Stmt interface {
 	Node
