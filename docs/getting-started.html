@@ -127,7 +127,7 @@ go run ./cmd/uli run project/தொடக்கம்.uli project/helpers.uli</c
 கொணர் _ "side-effect-package"</code></pre>
   <div class="callout">
     <strong>Compiler standard library</strong>
-    Imports <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, and <code>"நேரம்"</code> resolve to built-in packages under <code>stdlib/</code>, not relative folders.
+    Imports <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, <code>"நேரம்"</code>, and <code>"வடிவம்"</code> resolve to built-in packages under <code>stdlib/</code>, not relative folders.
   </div>
 
   <h2 id="errors">Handling operational errors</h2>
@@ -152,11 +152,12 @@ go run ./cmd/uli run project/தொடக்கம்.uli project/helpers.uli</c
         <tr><td><code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/</code></td><td>Niraluli HTTP REST + SQLite employees DB + React UI (see <code>SETUP.md</code>)</td></tr>
         <tr><td><code>corpus/tamil/கோப்பு/</code></td><td>File write/read helpers, create/open/close, missing-path error</td></tr>
         <tr><td><code>corpus/tamil/நேரம்/</code></td><td>Sleep, elapsed duration, Unix instant, RFC3339 format</td></tr>
+        <tr><td><code>corpus/tamil/வடிவமைப்பு/</code></td><td>fmt-style <code>%s</code> formatting, join, missing-arg marker</td></tr>
       </tbody>
     </table>
   </div>
-  <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/</code></pre>
-  <p>API details: <a href="standard-library.html#time">Standard library → Time</a>.</p>
+  <pre><code>go run ./cmd/uli run corpus/tamil/வடிவமைப்பு/</code></pre>
+  <p>API details: <a href="standard-library.html#fmt">Standard library → Formatting</a>.</p>
 
   <h2 id="editor">Tamil editor setup</h2>
   <ul>

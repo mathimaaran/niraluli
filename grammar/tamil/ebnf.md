@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.64** (2026-08-23) — time package நேரம்.
+Status: **Tamil-0.66** (2026-08-23) — variadic parameters `...T`.
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -23,11 +23,11 @@ FunctionName  = identifier .
 TypeParams    = "[" identifier { "," identifier } "]" .
 Signature     = "(" [ ParameterList ] ")" [ Result ] .
 ParameterList = ParameterDecl { "," ParameterDecl } .
-ParameterDecl = identifier Type .
+ParameterDecl = identifier [ "..." ] Type .
 Result        = Type | "(" [ ResultList ] ")" .
 ResultList    = NamedResults | TypeList .
 NamedResults  = identifier Type { "," identifier Type } .
-TypeList      = Type { "," Type } .
+TypeList      = [ "..." ] Type { "," [ "..." ] Type } .
 FunctionBody  = Block .
 
 Type          = TypeName | SliceType | ArrayType | PointerType | MapType | FuncType .
@@ -333,6 +333,18 @@ handles, `திற` / `உருவாக்கு` / `படி` / `எழு�
 No new syntax. Stdlib package `நேரம்` (`கொணர் "நேரம்"`): `காலம்` /
 `தருணம்`, `இப்போ` / `உறங்கு` / `கழித்தது`, Unix helpers, RFC3339
 `சரம்ஆக்கு`, and duration unit constructors. See `constructs/time.yaml`.
+
+## Formatting (Tamil-0.65)
+
+No new syntax. Stdlib package `வடிவம்` (`கொணர் "வடிவம்"`): `%s`/`%%`
+`வடிவமை` over string args, scalar `*உரை` helpers, and `இணை`.
+See `constructs/fmt.yaml`.
+
+## Variadic parameters (Tamil-0.66)
+
+Final parameter may be `பெயர் ...வகை` (Go-style). Inside the function the
+parameter has type `[]வகை`. Calls pack zero or more trailing args into that
+slice. See `constructs/variadic.yaml`. `வடிவம்.வடிவமை` uses `...சரம்`.
 
 ## Entry convention
 

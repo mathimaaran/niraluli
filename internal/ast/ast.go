@@ -81,10 +81,12 @@ func (d *TypeDecl) declNode()      {}
 
 // Field is a parameter, result, or struct field.
 // Name may be nil for unnamed results. Exported applies to struct fields only.
+// Ellipsis marks a variadic parameter (...T); Type is the element type T.
 type Field struct {
 	Exported bool // வெளி (struct fields)
 	Name     *Ident
 	Type     TypeExpr
+	Ellipsis bool // ...T (function/method parameters only; must be last)
 }
 
 func (f *Field) Pos() token.Pos {
@@ -173,10 +175,12 @@ func (t *ChanType) Pos() token.Pos { return t.Begin }
 func (t *ChanType) typeExpr()      {}
 
 // FuncType is செயல்பாடு(TypeList) [Result] (function type; Tamil-0.44).
+// If Variadic, Params[len-1] is the element type of ...T.
 type FuncType struct {
-	Func    token.Pos
-	Params  []TypeExpr // unnamed parameter types
-	Results []*Field   // same shape as FuncDecl.Results
+	Func     token.Pos
+	Params   []TypeExpr // unnamed parameter types
+	Results  []*Field   // same shape as FuncDecl.Results
+	Variadic bool
 }
 
 func (t *FuncType) Pos() token.Pos { return t.Func }

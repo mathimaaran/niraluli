@@ -90,7 +90,7 @@
   <ul>
     <li>A directory input loads its <code>.uli</code> package files.</li>
     <li>Relative import paths resolve from the importing package directory.</li>
-    <li><code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, and <code>"நேரம்"</code> resolve from <code>stdlib/</code>.</li>
+    <li><code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, <code>"நேரம்"</code>, and <code>"வடிவம்"</code> resolve from <code>stdlib/</code>.</li>
     <li>Dependency packages are checked/emitted before dependents.</li>
     <li>Cycles and unresolved package names are hard errors.</li>
     <li>The entry package defaults to <code>தொடக்கம்</code>.</li>
@@ -110,12 +110,14 @@ stdlib/பரிமாற்றம்/      HTTP public declarations and Niralul
 stdlib/தரவுத்தளம்/      SQL database public declarations
 stdlib/கோப்பு/          POSIX file I/O public declarations
 stdlib/நேரம்/           wall-clock time and duration public declarations
+stdlib/வடிவம்/          fmt-style formatting public declarations
 grammar/tamil/          EBNF, keyword glossary, construct cards
 corpus/tamil/           valid/invalid examples and integration programs
   தரவுத்தளம்/           SQLite API sample
   ஊழியர்_முழுஅடுக்கு/   Niraluli REST + React + SQLite full-stack demo
   கோப்பு/               file open/read/write sample
   நேரம்/                now/sleep/format sample
+  வடிவமைப்பு/           Sprintf-style formatting sample
 notes/                  roadmap, design decisions, deferred inventory
 tools/                  portable toolchain helpers
 docs/                   this static developer documentation

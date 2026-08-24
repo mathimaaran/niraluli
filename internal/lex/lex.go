@@ -368,6 +368,17 @@ func (l *Lexer) Next() token.Token {
 			return token.Token{Kind: token.SEMICOLON, Lit: ";", Pos: start}
 		case '.':
 			l.next()
+			if l.peek() == '.' {
+				l.next()
+				if l.peek() == '.' {
+					l.next()
+					return l.finish(token.Token{Kind: token.ELLIPSIS, Lit: "...", Pos: start})
+				}
+				// Lone ".." is illegal; treat as two periods by backing up one.
+				// Simpler: emit ELLIPSIS only for "..."; otherwise PERIOD then let
+				// the next '.' be lexed separately — but we already consumed two.
+				return l.finish(token.Token{Kind: token.ILLEGAL, Lit: "..", Pos: start})
+			}
 			if isNumDigit(l.peek()) {
 				return l.finish(l.readFloatFrac(start))
 			}

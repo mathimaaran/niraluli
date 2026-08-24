@@ -284,9 +284,9 @@ func (e *emitter) writeFuncValueCall(b *strings.Builder, call *ast.CallExpr, ft 
 	b.WriteString(helper)
 	b.WriteByte('(')
 	e.writeExpr(b, call.Fun)
-	for _, a := range call.Args {
+	if len(call.Args) > 0 || (e.info != nil && e.info.VariadicPacks[call] != nil) {
 		b.WriteString(", ")
-		e.writeExpr(b, a)
+		e.writeCallArgs(b, call)
 	}
 	b.WriteByte(')')
 }

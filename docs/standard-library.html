@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Niraluli standard library API reference for TCP, UDP, HTTP, SQL databases, file I/O, and time.">
+  <meta name="description" content="Niraluli standard library API reference for TCP, UDP, HTTP, SQL databases, file I/O, time, and formatting.">
   <title>Standard Library — Niraluli Documentation</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="docs.js"></script>
@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">API reference</p>
     <h1>Standard library</h1>
-    <p class="lead">Compiler-provided v0.64 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, <code>தரவுத்தளம்</code> for SQL databases through a shared backend vtable, <code>கோப்பு</code> for POSIX file I/O, and <code>நேரம்</code> for wall-clock time and durations.</p>
+    <p class="lead">Compiler-provided v0.66 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, <code>தரவுத்தளம்</code> for SQL databases through a shared backend vtable, <code>கோப்பு</code> for POSIX file I/O, <code>நேரம்</code> for wall-clock time and durations, and <code>வடிவம்</code> for fmt-style string formatting (variadic <code>...சரம்</code>).</p>
   </section>
 
   <div class="toc">
@@ -34,6 +34,8 @@
       <li><a href="#file-examples">File examples</a></li>
       <li><a href="#time">Time API</a></li>
       <li><a href="#time-examples">Time examples</a></li>
+      <li><a href="#fmt">Formatting API</a></li>
+      <li><a href="#fmt-examples">Formatting examples</a></li>
     </ul>
   </div>
 
@@ -43,7 +45,8 @@
 கொணர் "பரிமாற்றம்"
 கொணர் "தரவுத்தளம்"
 கொணர் "கோப்பு"
-கொணர் "நேரம்"</code></pre>
+கொணர் "நேரம்"
+கொணர் "வடிவம்"</code></pre>
   <p>Public <code>.uli</code> declarations define static types, while the C emitter replaces low-level bodies with runtime intrinsics.</p>
   <p>Network/HTTP failures return <code>*வலை.பிழை</code>; database failures return <code>*தரவுத்தளம்.பிழை</code>; file failures return <code>*கோப்பு.பிழை</code>. Success returns <code>இன்மை</code>. Always inspect the error before using associated results.</p>
   <pre><code>மதிப்பு, பிழை := வலை.இணை("127.0.0.1:8080")
@@ -489,6 +492,42 @@ n, ப4 := கோப்பு.படி(க, இடம்)
     </table>
   </div>
   <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/</code></pre>
+
+  <h2 id="fmt"><code>வடிவம்</code> — Formatting API</h2>
+  <p>fmt-style string formatting. Convert scalars with <code>*உரை</code>, then substitute <code>%s</code> placeholders. <code>வடிவமை</code> is variadic (<code>...சரம்</code>).</p>
+  <pre><code>கொணர் "வடிவம்"
+
+பதிப்பி(வடிவம்.வடிவமை("எண்=%s நிலை=%s", வடிவம்.எண்உரை(42), வடிவம்.நிலைஉரை(மெய்)))
+பதிப்பி(வடிவம்.இணை([]சரம்{"அ", "ஆ"}, "-"))</code></pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>API</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>எண்உரை</code> / <code>மிதவைஉரை</code> / <code>நிலைஉரை</code></td><td>Convert a scalar to <code>சரம்</code>.</td></tr>
+        <tr><td><code>வடிவமை(வார்ப்பு, மதிப்புகள் ...சரம்)</code></td><td>Replace <code>%s</code> in order; <code>%%</code> is literal <code>%</code>; missing → <code>%!s(MISSING)</code>.</td></tr>
+        <tr><td><code>இணை(பகுதிகள், பிரிப்பான்)</code></td><td>Join strings (like <code>strings.Join</code>).</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li><strong>Language:</strong> Tamil-0.66 variadics enable <code>...சரம்</code> without fixed-arity wrappers.</li>
+    <li><strong>Not included:</strong> width/precision, <code>%d</code>/<code>%g</code> verbs, or writer Printf.</li>
+  </ul>
+
+  <h2 id="fmt-examples">Formatting examples in the corpus</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>corpus/tamil/வடிவமைப்பு/</code></td>
+          <td>Named args, scalar conversion, <code>%%</code>, join, and missing-arg marker.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <pre><code>go run ./cmd/uli run corpus/tamil/வடிவமைப்பு/</code></pre>
 
   <div class="next-links">
     <a href="concurrency-runtime.html"><span>Previous</span>← Concurrency & runtime</a>

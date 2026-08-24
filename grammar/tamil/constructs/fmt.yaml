@@ -1,0 +1,19 @@
+status: codegen
+subset: Tamil-0.65
+go_analogue: fmt
+syntax: |
+  # no new syntax — stdlib package வடிவம் (கொணர் "வடிவம்")
+semantics: |
+  Tamil-0.65 adds fmt-style string formatting via stdlib package வடிவம்.
+  There are no variadic parameters yet, so வடிவமை takes a format string and
+  []சரம் args. Verbs: %s (next arg) and %% (literal %). Missing args become
+  %!s(MISSING). Helpers எண்உரை / மிதவைஉரை / நிலைஉரை convert scalars to சரம்.
+  இணை joins strings with a separator. வடிவமை1/2/3 are convenience wrappers.
+  No Printf-to-writer, width/precision verbs, or %d/%g (convert then %s).
+examples:
+  - |
+      கொணர் "வடிவம்"
+      பதிப்பி(வடிவம்.வடிவமை2("எண்=%s", வடிவம்.எண்உரை(42), "x"))
+notes:
+  - "No new keywords; வடிவம் is a compiler stdlib package."
+  - "Variadic fmt.Sprintf parity: Tamil-0.66 adds ...சரம்; typed %d still needs any/interfaces."

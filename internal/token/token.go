@@ -84,6 +84,7 @@ const (
 	RBRACE // }
 	COMMA  // ,
 	PERIOD // .
+	ELLIPSIS // ...
 )
 
 var kindNames = [...]string{
@@ -164,6 +165,7 @@ var kindNames = [...]string{
 	RBRACE: "RBRACE",
 	COMMA:  "COMMA",
 	PERIOD: "PERIOD",
+	ELLIPSIS: "ELLIPSIS",
 }
 
 func (k Kind) String() string {

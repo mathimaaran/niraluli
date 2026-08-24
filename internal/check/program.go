@@ -40,6 +40,7 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 		Maps:          map[Type]MapInfo{},
 		Chans:         map[Type]ChanInfo{},
 		Funcs:         map[Type]FuncInfo{},
+		VariadicPacks: map[*ast.CallExpr]*VariadicPack{},
 		TypeParamName: map[Type]string{},
 		CallInst:      map[*ast.CallExpr]*MonoInst{},
 		MethodValues:  map[ast.Expr]*MethodValueInfo{},

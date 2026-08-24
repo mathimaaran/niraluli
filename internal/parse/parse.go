@@ -261,17 +261,29 @@ func (p *Parser) parseFuncType() *ast.FuncType {
 	funcPos := p.expect(token.FUNC).Pos
 	p.expect(token.LPAREN)
 	var params []ast.TypeExpr
+	variadic := false
 	if p.tok.Kind != token.RPAREN && p.tok.Kind != token.SEMICOLON {
-		params = append(params, p.parseType())
-		for p.tok.Kind == token.COMMA {
+		if p.tok.Kind == token.ELLIPSIS {
 			p.next()
+			variadic = true
+		}
+		params = append(params, p.parseType())
+		for !variadic && p.tok.Kind == token.COMMA {
+			p.next()
+			if p.tok.Kind == token.ELLIPSIS {
+				p.next()
+				variadic = true
+			}
 			params = append(params, p.parseType())
+			if variadic {
+				break
+			}
 		}
 	}
 	p.skipNewlineSemi()
 	p.expect(token.RPAREN)
 	results := p.parseResultTypes()
-	return &ast.FuncType{Func: funcPos, Params: params, Results: results}
+	return &ast.FuncType{Func: funcPos, Params: params, Results: results, Variadic: variadic}
 }
 
 func (p *Parser) parseTypeDecl(exported bool, exportPos token.Pos) *ast.TypeDecl {
@@ -457,8 +469,20 @@ func (p *Parser) parseParameterList() []*ast.Field {
 	var fields []*ast.Field
 	for {
 		name := p.parseIdent()
+		ellipsis := false
+		if p.tok.Kind == token.ELLIPSIS {
+			p.next()
+			ellipsis = true
+		}
 		typ := p.parseType()
-		fields = append(fields, &ast.Field{Name: name, Type: typ})
+		fields = append(fields, &ast.Field{Name: name, Type: typ, Ellipsis: ellipsis})
+		if ellipsis {
+			if p.tok.Kind == token.COMMA {
+				p.errorExpected("end of parameter list after ...")
+				p.next()
+			}
+			break
+		}
 		if p.tok.Kind != token.COMMA {
 			break
 		}

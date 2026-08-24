@@ -13,7 +13,7 @@ Update when a subset ships (strike or move items) or when a construct card recor
 | Interfaces | Only if earned (e.g. Go-style `Handler`) | method.yaml |
 | Generic types / constraints | After interfaces earn a place | generics.yaml |
 
-Shipped: 0.11–0.64 (through time package `நேரம்`).
+Shipped: 0.11–0.66 (through variadic parameters `...T`).
 
 ## Backlog leftovers (pre-NASM optional; keep out of critical path)
 
@@ -27,6 +27,8 @@ Shipped: 0.11–0.64 (through time package `நேரம்`).
 | Public database driver ABI | Internal C vtable is not a third-party plugin API | database.yaml |
 | File seek / directories / chmod | Tamil-0.63 is open/read/write/close + whole-file helpers | file.yaml |
 | Timers / tickers / parse / locations | Tamil-0.64 is now/sleep/since + RFC3339 UTC format | time.yaml |
+| Variadic / typed fmt verbs (`%d`) | Tamil-0.66 has `...T`; `%d`/`any` still later | fmt.yaml |
+| `slice...` expand at call sites | Tamil-0.66 packs trailing args only | variadic.yaml |
 | Interfaces | Only if earned | method.yaml |
 
 ## Struct & types
@@ -67,6 +69,8 @@ Shipped: 0.11–0.64 (through time package `நேரம்`).
 | ~~Shared SQL vtable + SQLite backend~~ | Tamil-0.62 `கொணர் "தரவுத்தளம்"` | database.yaml |
 | ~~POSIX file I/O~~ | Tamil-0.63 `கொணர் "கோப்பு"` | file.yaml |
 | ~~Time / duration~~ | Tamil-0.64 `கொணர் "நேரம்"` | time.yaml |
+| ~~fmt-style formatting~~ | Tamil-0.65 `கொணர் "வடிவம்"` | fmt.yaml |
+| ~~Variadic parameters~~ | Tamil-0.66 `...T` | variadic.yaml |
 | Goroutines / channels | Tamil-0.48 on C (pthread); see goroutine.yaml | goroutine.yaml |
 | NASM + custom IR | IR when NASM begins | design-decisions |
 | Windows / macOS primary targets | Linux-first | Non-goals |

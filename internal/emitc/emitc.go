@@ -99,6 +99,7 @@ type emitter struct {
 	needDB        bool // தரவுத்தளம் SQL database API (Tamil-0.62)
 	needFile      bool // கோப்பு file I/O (Tamil-0.63)
 	needTime      bool // நேரம் wall clock + duration (Tamil-0.64)
+	needFmt       bool // வடிவம் fmt-style formatting (Tamil-0.65)
 	needArena     bool
 	needUTF8      bool
 	needRuneStr   bool // சரம்(rune) conversion helper
@@ -139,6 +140,7 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	e.markDBNeeds(pkgNames)
 	e.markFileNeeds(pkgNames)
 	e.markTimeNeeds(pkgNames)
+	e.markFmtNeeds(pkgNames)
 
 	var body strings.Builder
 	for _, p := range pkgs {
@@ -169,7 +171,7 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 		e.needFunc = true
 	}
 	e.markChanNeeds()
-	if e.needArena || e.needConcat || e.needAppend || e.needSlice || e.needMake || e.needRuneStr || e.needStrBytes || e.needMap || e.needDefer || e.needFunc || e.needChan || e.needGo || e.needNet || e.needHttp || e.needDB || e.needFile || e.needTime {
+	if e.needArena || e.needConcat || e.needAppend || e.needSlice || e.needMake || e.needRuneStr || e.needStrBytes || e.needMap || e.needDefer || e.needFunc || e.needChan || e.needGo || e.needNet || e.needHttp || e.needDB || e.needFile || e.needTime || e.needFmt {
 		e.needArena = true
 	}
 
@@ -213,6 +215,7 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	e.writeDBRuntime(&b)
 	e.writeFileRuntime(&b)
 	e.writeTimeRuntime(&b)
+	e.writeFmtRuntime(&b)
 	e.writeChanRuntime(&b)
 	e.writePanicRuntime(&b)
 	if e.needConcat {
@@ -2247,13 +2250,98 @@ func (e *emitter) cFuncSig(fn *ast.FuncDecl) string {
 				b.WriteString(", ")
 			}
 			first = false
-			b.WriteString(e.cTypeExpr(p.Type))
+			b.WriteString(e.cParamType(p))
 			b.WriteByte(' ')
 			b.WriteString(cIdent(p.Name.Name))
 		}
 	}
 	b.WriteByte(')')
 	return b.String()
+}
+
+func (e *emitter) cParamType(p *ast.Field) string {
+	if p != nil && p.Ellipsis {
+		elem := e.resolveTypeExpr(p.Type)
+		st := e.sliceTypeOfElem(elem)
+		if st != check.TypeInvalid {
+			return e.cTypeFrom(st)
+		}
+	}
+	return e.cTypeExpr(p.Type)
+}
+
+func (e *emitter) sliceTypeOfElem(elem check.Type) check.Type {
+	elem = e.peelUnderlying(elem)
+	switch elem {
+	case check.TypeInt:
+		return check.TypeSliceInt
+	case check.TypeBool:
+		return check.TypeSliceBool
+	case check.TypeString:
+		return check.TypeSliceStr
+	case check.TypeFloat:
+		return check.TypeSliceFloat
+	case check.TypeByte:
+		return check.TypeSliceByte
+	case check.TypeRune:
+		return check.TypeSliceRune
+	}
+	if e.info != nil {
+		for st, el := range e.info.SliceElem {
+			if el == elem {
+				return st
+			}
+		}
+	}
+	return check.TypeInvalid
+}
+
+func (e *emitter) writeCallArgs(b *strings.Builder, call *ast.CallExpr) {
+	if call == nil {
+		return
+	}
+	var pack *check.VariadicPack
+	if e.info != nil {
+		pack = e.info.VariadicPacks[call]
+	}
+	if pack == nil {
+		for i, a := range call.Args {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			e.writeExpr(b, a)
+		}
+		return
+	}
+	for i := 0; i < pack.Fixed; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		e.writeExpr(b, call.Args[i])
+	}
+	if pack.Fixed > 0 {
+		b.WriteString(", ")
+	}
+	e.writeVariadicSlice(b, call.Args[pack.Fixed:], pack)
+}
+
+func (e *emitter) writeVariadicSlice(b *strings.Builder, args []ast.Expr, pack *check.VariadicPack) {
+	e.needSlice = true
+	e.needArena = true
+	sliceTy := e.sliceCName(pack.Slice)
+	arrTy := e.cTypeFrom(pack.Elem)
+	fmt.Fprintf(b, "(%s){ (%s[]){", sliceTy, arrTy)
+	if len(args) == 0 {
+		b.WriteString(e.zeroCValue(pack.Elem))
+	} else {
+		for i, a := range args {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			e.writeExpr(b, a)
+		}
+	}
+	fmt.Fprintf(b, "}, %dLL, %dLL }", len(args), len(args))
 }
 
 func (e *emitter) writeFunc(b *strings.Builder, fn *ast.FuncDecl) {
@@ -2270,6 +2358,9 @@ func (e *emitter) writeFunc(b *strings.Builder, fn *ast.FuncDecl) {
 		return
 	}
 	if e.writeTimeIntrinsic(b, fn) {
+		return
+	}
+	if e.writeFmtIntrinsic(b, fn) {
 		return
 	}
 	prev := e.curFn
@@ -4016,12 +4107,7 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 			if inst := e.info.CallInst[expr]; inst != nil {
 				b.WriteString(e.monoCName(inst))
 				b.WriteByte('(')
-				for i, a := range expr.Args {
-					if i > 0 {
-						b.WriteString(", ")
-					}
-					e.writeExpr(b, a)
-				}
+				e.writeCallArgs(b, expr)
 				b.WriteByte(')')
 				return
 			}
@@ -4035,12 +4121,7 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 				if id, ok := sel.X.(*ast.Ident); ok {
 					b.WriteString(cPkgIdent(e.realPkg(id.Name), sel.Sel.Name))
 					b.WriteByte('(')
-					for i, a := range expr.Args {
-						if i > 0 {
-							b.WriteString(", ")
-						}
-						e.writeExpr(b, a)
-					}
+					e.writeCallArgs(b, expr)
 					b.WriteByte(')')
 					return
 				}
@@ -4059,12 +4140,7 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 		}
 		b.WriteString(cPkgIdent(e.pkg, id.Name))
 		b.WriteByte('(')
-		for i, a := range expr.Args {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			e.writeExpr(b, a)
-		}
+		e.writeCallArgs(b, expr)
 		b.WriteByte(')')
 	case *ast.CompositeLit:
 		e.writeCompositeLit(b, expr)
@@ -4195,9 +4271,9 @@ func (e *emitter) writeMethodCall(b *strings.Builder, call *ast.CallExpr, sel *a
 			e.writeExpr(b, sel.X)
 		}
 	}
-	for _, a := range call.Args {
+	if len(call.Args) > 0 || (e.info != nil && e.info.VariadicPacks[call] != nil) {
 		b.WriteString(", ")
-		e.writeExpr(b, a)
+		e.writeCallArgs(b, call)
 	}
 	b.WriteByte(')')
 }

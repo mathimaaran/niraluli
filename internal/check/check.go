@@ -144,8 +144,16 @@ type ChanInfo struct {
 
 // FuncInfo describes a function type செயல்பாடு(params) results.
 type FuncInfo struct {
-	Params  []Type
-	Results []Type // empty = void
+	Params   []Type
+	Results  []Type // empty = void
+	Variadic bool   // last Params entry is []T for ...T
+}
+
+// VariadicPack records how a call packs trailing args into a []T (Tamil-0.66).
+type VariadicPack struct {
+	Slice Type
+	Elem  Type
+	Fixed int // leading fixed argument count
 }
 
 // MethodValueInfo records a method value expression (X.M) for emit.
@@ -183,6 +191,7 @@ type ClosureInfo struct {
 	Lit      *ast.FuncLit
 	Params   []Type
 	Results  []Type
+	Variadic bool
 	Captures []CaptureVar
 	capSeen  map[string]bool
 	ID       int
@@ -251,6 +260,7 @@ type MethodInfo struct {
 	RecvName  string
 	Params    []Type
 	Results   []Type
+	Variadic  bool
 	Decl      *ast.FuncDecl
 }
 
@@ -284,6 +294,7 @@ type Info struct {
 	Maps           map[Type]MapInfo      // map type → key + elem
 	Chans          map[Type]ChanInfo     // channel type → elem + dir
 	Funcs          map[Type]FuncInfo     // function type → params/results
+	VariadicPacks  map[*ast.CallExpr]*VariadicPack
 	TypeParamName  map[Type]string       // type parameter → source name
 	Instantiations []*MonoInst           // unique generic function instantiations
 	CallInst       map[*ast.CallExpr]*MonoInst
@@ -334,6 +345,7 @@ func (e Error) Error() string {
 type funcSig struct {
 	params         []Type
 	results        []Type // empty = void
+	variadic       bool
 	exported       bool
 	decl           *ast.FuncDecl
 	typeParams     []Type // schematic type-parameter ids (ordered)
@@ -630,9 +642,9 @@ func typesEqual(a, b []Type) bool {
 	return true
 }
 
-func (c *Checker) funcOf(params, results []Type) Type {
+func (c *Checker) funcOf(params, results []Type, variadic bool) Type {
 	for t, fi := range c.info.Funcs {
-		if typesEqual(fi.Params, params) && typesEqual(fi.Results, results) {
+		if fi.Variadic == variadic && typesEqual(fi.Params, params) && typesEqual(fi.Results, results) {
 			return t
 		}
 	}
@@ -640,7 +652,7 @@ func (c *Checker) funcOf(params, results []Type) Type {
 	c.nextFunc++
 	pc := append([]Type(nil), params...)
 	rc := append([]Type(nil), results...)
-	c.info.Funcs[t] = FuncInfo{Params: pc, Results: rc}
+	c.info.Funcs[t] = FuncInfo{Params: pc, Results: rc, Variadic: variadic}
 	return t
 }
 
@@ -652,7 +664,11 @@ func (c *Checker) typStr(t Type) string {
 			if i > 0 {
 				s += ", "
 			}
-			s += c.typStr(p)
+			if fi.Variadic && i == len(fi.Params)-1 {
+				s += "..." + c.typStr(ElemOfSlice(c.info, p))
+			} else {
+				s += c.typStr(p)
+			}
 		}
 		s += ")"
 		switch len(fi.Results) {
@@ -1087,13 +1103,25 @@ func (c *Checker) typeFromExpr(te ast.TypeExpr) Type {
 				return TypeInvalid
 			}
 		}
+		if te.Variadic {
+			if len(params) == 0 {
+				return TypeInvalid
+			}
+			last := len(params) - 1
+			st, ok := c.sliceOf(params[last])
+			if !ok {
+				c.error(te.Pos(), "invalid variadic element type %s", c.typStr(params[last]))
+				return TypeInvalid
+			}
+			params[last] = st
+		}
 		results := c.typesFromResults(te.Results)
 		for _, r := range results {
 			if r == TypeInvalid {
 				return TypeInvalid
 			}
 		}
-		return c.funcOf(params, results)
+		return c.funcOf(params, results, te.Variadic)
 	default:
 		return TypeInvalid
 	}
@@ -1151,6 +1179,76 @@ func (c *Checker) typeFromName(tn *ast.TypeName) Type {
 	}
 }
 
+func (c *Checker) paramsFromFields(fields []*ast.Field) ([]Type, bool) {
+	params := make([]Type, 0, len(fields))
+	variadic := false
+	for i, p := range fields {
+		if p == nil {
+			params = append(params, TypeInvalid)
+			continue
+		}
+		t := c.typeFromExpr(p.Type)
+		if p.Ellipsis {
+			if i != len(fields)-1 {
+				c.error(p.Type.Pos(), "... is only allowed on the final parameter")
+			}
+			st, ok := c.sliceOf(t)
+			if !ok {
+				c.error(p.Type.Pos(), "invalid variadic element type %s", c.typStr(t))
+				t = TypeInvalid
+			} else {
+				t = st
+			}
+			variadic = true
+		}
+		params = append(params, t)
+	}
+	return params, variadic
+}
+
+func (c *Checker) checkCallArgs(e *ast.CallExpr, params []Type, variadic bool, label string) {
+	if e == nil {
+		return
+	}
+	if !variadic {
+		if len(e.Args) != len(params) {
+			c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", label, len(params), len(e.Args))
+		}
+		for i, arg := range e.Args {
+			t := c.checkExpr(arg)
+			if i < len(params) && !c.assignable(t, params[i], arg) {
+				c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(t))
+			}
+		}
+		return
+	}
+	if len(params) == 0 {
+		c.error(e.Pos(), "invalid variadic signature for %s", label)
+		for _, arg := range e.Args {
+			c.checkExpr(arg)
+		}
+		return
+	}
+	fixed := len(params) - 1
+	if len(e.Args) < fixed {
+		c.error(e.Pos(), "wrong number of arguments to %s (want at least %d, got %d)", label, fixed, len(e.Args))
+	}
+	for i := 0; i < fixed && i < len(e.Args); i++ {
+		t := c.checkExpr(e.Args[i])
+		if !c.assignable(t, params[i], e.Args[i]) {
+			c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(t))
+		}
+	}
+	elem := ElemOfSlice(c.info, params[fixed])
+	for i := fixed; i < len(e.Args); i++ {
+		t := c.checkExpr(e.Args[i])
+		if !c.assignable(t, elem, e.Args[i]) {
+			c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(elem), c.typStr(t))
+		}
+	}
+	c.info.VariadicPacks[e] = &VariadicPack{Slice: params[fixed], Elem: elem, Fixed: fixed}
+}
+
 func (c *Checker) collectFunc(fn *ast.FuncDecl) {
 	if fn.Name == nil || c.cur == nil {
 		return
@@ -1182,9 +1280,7 @@ func (c *Checker) collectFunc(fn *ast.FuncDecl) {
 		}
 	}
 	sig := &funcSig{results: c.typesFromResults(fn.Results), decl: fn}
-	for _, p := range fn.Params {
-		sig.params = append(sig.params, c.typeFromExpr(p.Type))
-	}
+	sig.params, sig.variadic = c.paramsFromFields(fn.Params)
 	if len(fn.TypeParams) > 0 {
 		for _, tp := range fn.TypeParams {
 			if tp == nil {
@@ -1244,6 +1340,7 @@ func (c *Checker) collectMethod(fn *ast.FuncDecl, sig *funcSig) {
 		RecvName:  fn.Recv.Name.Name,
 		Params:    sig.params,
 		Results:   sig.results,
+		Variadic:  sig.variadic,
 		Decl:      fn,
 	}
 }
@@ -1266,14 +1363,12 @@ func (c *Checker) checkFunc(fn *ast.FuncDecl) {
 		}
 		if si, ok := c.info.Structs[base]; ok {
 			if mi, ok := si.Methods[fn.Name.Name]; ok {
-				sig = &funcSig{params: mi.Params, results: mi.Results, decl: fn}
+				sig = &funcSig{params: mi.Params, results: mi.Results, variadic: mi.Variadic, decl: fn}
 			}
 		}
 		if sig == nil {
 			sig = &funcSig{results: c.typesFromResults(fn.Results), decl: fn}
-			for _, p := range fn.Params {
-				sig.params = append(sig.params, c.typeFromExpr(p.Type))
-			}
+			sig.params, sig.variadic = c.paramsFromFields(fn.Params)
 		}
 	} else if c.cur != nil {
 		sig = c.cur.funcs[fn.Name.Name]
@@ -1296,12 +1391,30 @@ func (c *Checker) checkFunc(fn *ast.FuncDecl) {
 		}
 		c.scope.declare(fn.Recv.Name.Name, rt, fn.Recv.Name.Pos(), &c.errs)
 	}
-	for _, p := range fn.Params {
-		t := c.typeFromExpr(p.Type)
-		if t == TypeInvalid {
-			c.error(p.Type.Pos(), "invalid parameter type")
+	if sig != nil {
+		for i, p := range fn.Params {
+			t := TypeInvalid
+			if i < len(sig.params) {
+				t = sig.params[i]
+			}
+			if t == TypeInvalid {
+				c.error(p.Type.Pos(), "invalid parameter type")
+			}
+			c.scope.declare(p.Name.Name, t, p.Name.Pos(), &c.errs)
 		}
-		c.scope.declare(p.Name.Name, t, p.Name.Pos(), &c.errs)
+	} else {
+		for _, p := range fn.Params {
+			t := c.typeFromExpr(p.Type)
+			if p.Ellipsis {
+				if st, ok := c.sliceOf(t); ok {
+					t = st
+				}
+			}
+			if t == TypeInvalid {
+				c.error(p.Type.Pos(), "invalid parameter type")
+			}
+			c.scope.declare(p.Name.Name, t, p.Name.Pos(), &c.errs)
+		}
 	}
 	for _, r := range fn.Results {
 		if r.Name == nil {
@@ -1370,18 +1483,18 @@ func (c *Checker) noteCapture(name string, t Type, declScope *scope) {
 }
 
 func (c *Checker) checkFuncLit(e *ast.FuncLit) Type {
-	params := make([]Type, 0, len(e.Params))
-	for _, p := range e.Params {
+	params, variadic := c.paramsFromFields(e.Params)
+	for i, p := range e.Params {
 		if p.Name == nil {
 			c.error(p.Type.Pos(), "function literal parameters must be named")
-			params = append(params, TypeInvalid)
+			if i < len(params) {
+				params[i] = TypeInvalid
+			}
 			continue
 		}
-		t := c.typeFromExpr(p.Type)
-		if t == TypeInvalid || t == TypeVoid {
+		if i < len(params) && (params[i] == TypeInvalid || params[i] == TypeVoid) {
 			c.error(p.Type.Pos(), "invalid parameter type")
 		}
-		params = append(params, t)
 	}
 	results := c.typesFromResults(e.Results)
 	for i, r := range results {
@@ -1389,17 +1502,17 @@ func (c *Checker) checkFuncLit(e *ast.FuncLit) Type {
 			c.error(e.Results[i].Type.Pos(), "invalid result type")
 		}
 	}
-	ft := c.funcOf(params, results)
+	ft := c.funcOf(params, results, variadic)
 
 	ci := &ClosureInfo{
-		Lit: e, Params: params, Results: results,
+		Lit: e, Params: params, Results: results, Variadic: variadic,
 		capSeen: map[string]bool{}, ID: c.nextClosure,
 	}
 	c.nextClosure++
 	c.info.Closures[e] = ci
 
 	prevFn := c.curFn
-	c.curFn = &funcSig{params: params, results: results, decl: nil}
+	c.curFn = &funcSig{params: params, results: results, variadic: variadic, decl: nil}
 	c.push()
 	root := c.scope
 	for i, p := range e.Params {
@@ -2058,7 +2171,7 @@ func (c *Checker) checkExpr(e ast.Expr) Type {
 						c.error(e.Pos(), "cannot use generic function %s as a value", e.Name)
 						t = TypeInvalid
 					} else {
-						t = c.funcOf(sig.params, sig.results)
+						t = c.funcOf(sig.params, sig.results, sig.variadic)
 						c.info.PkgFuncValues[e] = &PkgFuncValueInfo{
 							Pkg: c.cur.name, Name: e.Name,
 							Params:  append([]Type(nil), sig.params...),
@@ -2321,7 +2434,7 @@ func (c *Checker) checkSelectorExpr(e *ast.SelectorExpr) Type {
 					c.error(e.Pos(), "cannot use generic function %s.%s as a value", imp.name, e.Sel.Name)
 					return TypeInvalid
 				}
-				ft := c.funcOf(sig.params, sig.results)
+				ft := c.funcOf(sig.params, sig.results, sig.variadic)
 				c.info.PkgFuncValues[e] = &PkgFuncValueInfo{
 					Pkg: imp.name, Name: e.Sel.Name,
 					Params:  append([]Type(nil), sig.params...),
@@ -2375,7 +2488,7 @@ func (c *Checker) checkSelectorExpr(e *ast.SelectorExpr) Type {
 				takeAddr = true
 			}
 		}
-		ft := c.funcOf(mi.Params, mi.Results)
+		ft := c.funcOf(mi.Params, mi.Results, mi.Variadic)
 		c.info.MethodValues[e] = &MethodValueInfo{
 			Method: mi, Struct: si, TakeAddr: takeAddr, RecvIsPtr: recvIsPtr,
 		}
@@ -2415,7 +2528,7 @@ func (c *Checker) tryMethodExpr(e *ast.SelectorExpr) (Type, bool) {
 		recvType = c.pointerOf(base)
 	}
 	params := append([]Type{recvType}, mi.Params...)
-	ft := c.funcOf(params, mi.Results)
+	ft := c.funcOf(params, mi.Results, mi.Variadic)
 	c.info.MethodExprs[e] = &MethodExprInfo{
 		Method: mi, Struct: si, ExprRecvPtr: exprPtr, RecvType: recvType,
 	}
@@ -3056,15 +3169,7 @@ func (c *Checker) checkCall(e *ast.CallExpr) Type {
 	if len(explicit) > 0 {
 		c.error(e.Pos(), "cannot instantiate non-generic function %s", funName)
 	}
-	if len(e.Args) != len(sig.params) {
-		c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", funName, len(sig.params), len(e.Args))
-	}
-	for i, arg := range e.Args {
-		t := c.checkExpr(arg)
-		if i < len(sig.params) && !c.assignable(t, sig.params[i], arg) {
-			c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(sig.params[i]), c.typStr(t))
-		}
-	}
+	c.checkCallArgs(e, sig.params, sig.variadic, funName)
 	return c.finishCallResult(e, sig.results)
 }
 
@@ -3113,15 +3218,7 @@ func (c *Checker) checkPkgFuncCall(e *ast.CallExpr, sel *ast.SelectorExpr, imp *
 	if len(explicit) > 0 {
 		c.error(e.Pos(), "cannot instantiate non-generic function %s.%s", imp.name, sel.Sel.Name)
 	}
-	if len(e.Args) != len(sig.params) {
-		c.error(e.Pos(), "wrong number of arguments to %s.%s (want %d, got %d)", imp.name, sel.Sel.Name, len(sig.params), len(e.Args))
-	}
-	for i, arg := range e.Args {
-		t := c.checkExpr(arg)
-		if i < len(sig.params) && !c.assignable(t, sig.params[i], arg) {
-			c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(sig.params[i]), c.typStr(t))
-		}
-	}
+	c.checkCallArgs(e, sig.params, sig.variadic, imp.name+"."+sel.Sel.Name)
 	return c.finishCallResult(e, sig.results)
 }
 
@@ -3138,12 +3235,21 @@ func (c *Checker) typeArgFromExpr(e ast.Expr) Type {
 }
 
 func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name string, explicit []Type) Type {
-	if len(e.Args) != len(sig.params) {
-		c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", name, len(sig.params), len(e.Args))
-	}
 	argTypes := make([]Type, len(e.Args))
 	for i, arg := range e.Args {
 		argTypes[i] = c.checkExpr(arg)
+	}
+	if sig.variadic {
+		if len(sig.params) == 0 {
+			c.error(e.Pos(), "invalid variadic signature for %s", name)
+			return TypeInvalid
+		}
+		fixed := len(sig.params) - 1
+		if len(e.Args) < fixed {
+			c.error(e.Pos(), "wrong number of arguments to %s (want at least %d, got %d)", name, fixed, len(e.Args))
+		}
+	} else if len(e.Args) != len(sig.params) {
+		c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", name, len(sig.params), len(e.Args))
 	}
 	subst := map[Type]Type{}
 	if len(explicit) > 0 {
@@ -3157,13 +3263,36 @@ func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name stri
 			}
 		}
 	}
-	for i := 0; i < len(sig.params) && i < len(argTypes); i++ {
-		if argTypes[i] == TypeInvalid {
-			continue
+	if sig.variadic && len(sig.params) > 0 {
+		fixed := len(sig.params) - 1
+		for i := 0; i < fixed && i < len(argTypes); i++ {
+			if argTypes[i] == TypeInvalid {
+				continue
+			}
+			if !c.unify(sig.params[i], argTypes[i], subst) {
+				c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
+					i+1, c.typStr(sig.params[i]), c.typStr(argTypes[i]))
+			}
 		}
-		if !c.unify(sig.params[i], argTypes[i], subst) {
-			c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
-				i+1, c.typStr(sig.params[i]), c.typStr(argTypes[i]))
+		elemSch := ElemOfSlice(c.info, sig.params[fixed])
+		for i := fixed; i < len(argTypes); i++ {
+			if argTypes[i] == TypeInvalid {
+				continue
+			}
+			if !c.unify(elemSch, argTypes[i], subst) {
+				c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
+					i+1, c.typStr(elemSch), c.typStr(argTypes[i]))
+			}
+		}
+	} else {
+		for i := 0; i < len(sig.params) && i < len(argTypes); i++ {
+			if argTypes[i] == TypeInvalid {
+				continue
+			}
+			if !c.unify(sig.params[i], argTypes[i], subst) {
+				c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
+					i+1, c.typStr(sig.params[i]), c.typStr(argTypes[i]))
+			}
 		}
 	}
 	for i, tp := range sig.typeParams {
@@ -3173,9 +3302,25 @@ func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name stri
 	}
 	params := c.substTypes(sig.params, subst)
 	results := c.substTypes(sig.results, subst)
-	for i, arg := range e.Args {
-		if i < len(params) && argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], params[i], arg) {
-			c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(argTypes[i]))
+	if sig.variadic && len(params) > 0 {
+		fixed := len(params) - 1
+		for i := 0; i < fixed && i < len(e.Args); i++ {
+			if argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], params[i], e.Args[i]) {
+				c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(argTypes[i]))
+			}
+		}
+		elem := ElemOfSlice(c.info, params[fixed])
+		for i := fixed; i < len(e.Args); i++ {
+			if argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], elem, e.Args[i]) {
+				c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(elem), c.typStr(argTypes[i]))
+			}
+		}
+		c.info.VariadicPacks[e] = &VariadicPack{Slice: params[fixed], Elem: elem, Fixed: fixed}
+	} else {
+		for i, arg := range e.Args {
+			if i < len(params) && argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], params[i], arg) {
+				c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(argTypes[i]))
+			}
 		}
 	}
 	typeArgs := make([]Type, len(sig.typeParams))
@@ -3348,15 +3493,7 @@ func (c *Checker) checkMethodCallKnown(e *ast.CallExpr, sel *ast.SelectorExpr, x
 			c.error(sel.X.Pos(), "cannot call pointer method %s on non-addressable value", mi.Name)
 		}
 	}
-	if len(e.Args) != len(mi.Params) {
-		c.error(e.Pos(), "wrong number of arguments to %s.%s (want %d, got %d)", si.Name, mi.Name, len(mi.Params), len(e.Args))
-	}
-	for i, arg := range e.Args {
-		t := c.checkExpr(arg)
-		if i < len(mi.Params) && !c.assignable(t, mi.Params[i], arg) {
-			c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(mi.Params[i]), c.typStr(t))
-		}
-	}
+	c.checkCallArgs(e, mi.Params, mi.Variadic, si.Name+"."+mi.Name)
 	return c.finishCallResult(e, mi.Results)
 }
 
@@ -3364,17 +3501,12 @@ func (c *Checker) checkFuncValueCall(e *ast.CallExpr, ft Type) Type {
 	fi, ok := c.info.Funcs[ft]
 	if !ok {
 		c.error(e.Pos(), "call of non-function")
+		for _, arg := range e.Args {
+			c.checkExpr(arg)
+		}
 		return TypeInvalid
 	}
 	c.record(e.Fun, ft)
-	if len(e.Args) != len(fi.Params) {
-		c.error(e.Pos(), "wrong number of arguments (want %d, got %d)", len(fi.Params), len(e.Args))
-	}
-	for i, arg := range e.Args {
-		t := c.checkExpr(arg)
-		if i < len(fi.Params) && !c.assignable(t, fi.Params[i], arg) {
-			c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(fi.Params[i]), c.typStr(t))
-		}
-	}
+	c.checkCallArgs(e, fi.Params, fi.Variadic, "function value")
 	return c.finishCallResult(e, fi.Results)
 }

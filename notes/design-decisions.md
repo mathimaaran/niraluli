@@ -513,6 +513,23 @@ GC); `கழித்தது` is elapsed since an instant. Unit helpers
 durations. `சரம்ஆக்கு` formats RFC3339 UTC with nanoseconds. No timers,
 tickers, time zones beyond UTC formatting, or parse API in this slice.
 
+## Tamil-0.65 (2026-08-23)
+
+Stdlib package **வடிவம்** adds fmt-style string formatting without
+variadics. `வடிவமை(வார்ப்பு, []சரம்)` substitutes `%s` in order (`%%` for
+a literal percent); missing args become `%!s(MISSING)`. Scalar helpers
+`எண்உரை` / `மிதவைஉரை` / `நிலைஉரை` convert to `சரம்`. `இணை` is
+`strings.Join`. `வடிவமை1`/`2`/`3` wrap small fixed arities. Width,
+precision, `%d`/`%g`, and writer Printf wait on richer typing or later slices.
+
+## Tamil-0.66 (2026-08-23)
+
+**Variadic parameters** use Go punctuation `...T` on the final parameter of
+functions, methods, function literals, and function types. Inside the body the
+name has type `[]T`. Call sites may pass zero or more trailing `T` values; the
+emitter packs them into a temporary slice. `slice...` expand is deferred.
+`வடிவம்.வடிவமை` now takes `...சரம்` (removed fixed-arity `வடிவமை1`/`2`/`3`).
+
 ## Priority (2026-08-01)
 
 Harden the language (other gaps) **before** starting the NASM x86-64

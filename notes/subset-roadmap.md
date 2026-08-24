@@ -97,6 +97,8 @@ Out of scope for Tamil-0:
 - [x] Shared SQL database vtable + SQLite backend
 - [x] POSIX file I/O (`கொணர் "கோப்பு"`)
 - [x] Time / duration (`கொணர் "நேரம்"`)
+- [x] fmt-style formatting (`கொணர் "வடிவம்"`)
+- [x] Variadic parameters (`...T`)
 
 ## Later growth
 

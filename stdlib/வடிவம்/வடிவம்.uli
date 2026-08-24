@@ -1,0 +1,26 @@
+// Niraluli stdlib: வடிவம் — fmt-style string formatting (Tamil-0.65/0.66).
+// வடிவமை takes a format string and variadic சரம் args (...சரம் → []சரம்).
+
+தொகுப்பு வடிவம்
+
+வெளி செயல்பாடு எண்உரை(n முழுஎண்) சரம் {
+    திருப்பு ""
+}
+
+வெளி செயல்பாடு மிதவைஉரை(f மிதவைஎண்) சரம் {
+    திருப்பு ""
+}
+
+வெளி செயல்பாடு நிலைஉரை(b நிலை) சரம் {
+    திருப்பு ""
+}
+
+// வடிவமை replaces %s from மதிப்புகள் in order; %% is a literal %.
+// Missing args become "%!s(MISSING)". Extra args are ignored. Unknown % verbs stay literal.
+வெளி செயல்பாடு வடிவமை(வார்ப்பு சரம், மதிப்புகள் ...சரம்) சரம் {
+    திருப்பு ""
+}
+
+வெளி செயல்பாடு இணை(பகுதிகள் []சரம், பிரிப்பான் சரம்) சரம் {
+    திருப்பு ""
+}
