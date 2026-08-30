@@ -11,9 +11,9 @@ Update when a subset ships (strike or move items) or when a construct card recor
 |------|--------|--------|
 | NASM x86-64 → i386 | Next major backend work | roadmap |
 | Interfaces | Only if earned (e.g. Go-style `Handler`) | method.yaml |
-| Generic types / constraints | After interfaces earn a place | generics.yaml |
+| Interface constraints on generics | After interfaces | generics.yaml |
 
-Shipped: 0.11–0.67 (through compile-time constants `மாறிலி`).
+Shipped: 0.11–0.72 (through generic methods on generic types).
 
 ## Backlog leftovers (pre-NASM optional; keep out of critical path)
 
@@ -28,7 +28,6 @@ Shipped: 0.11–0.67 (through compile-time constants `மாறிலி`).
 | File seek / directories / chmod | Tamil-0.63 is open/read/write/close + whole-file helpers | file.yaml |
 | Timers / tickers / parse / locations | Tamil-0.64 is now/sleep/since + RFC3339 UTC format | time.yaml |
 | Variadic / typed fmt verbs (`%d`) | Tamil-0.66 has `...T`; `%d`/`any` still later | fmt.yaml |
-| `slice...` expand at call sites | Tamil-0.66 packs trailing args only | variadic.yaml |
 | Interfaces | Only if earned | method.yaml |
 
 ## Struct & types
@@ -72,7 +71,11 @@ Shipped: 0.11–0.67 (through compile-time constants `மாறிலி`).
 | ~~fmt-style formatting~~ | Tamil-0.65 `கொணர் "வடிவம்"` | fmt.yaml |
 | ~~Variadic parameters~~ | Tamil-0.66 `...T` | variadic.yaml |
 | ~~Compile-time constants~~ | Tamil-0.67 `மாறிலி` | const.yaml |
-| `iota` / const `( … )` groups | After மாறிலி base | const.yaml |
+| ~~`iota` / const `( … )` groups~~ | Tamil-0.68 | const.yaml |
+| ~~`slice...` expand at call sites~~ | Tamil-0.69 | variadic.yaml |
+| ~~Package-level variables~~ | Tamil-0.70 `மாறி` | var.yaml |
+| ~~Generic types / union constraints~~ | Tamil-0.71 | generics.yaml |
+| ~~Generic methods on generic types~~ | Tamil-0.72 | generics.yaml |
 | Goroutines / channels | Tamil-0.48 on C (pthread); see goroutine.yaml | goroutine.yaml |
 | NASM + custom IR | IR when NASM begins | design-decisions |
 | Windows / macOS primary targets | Linux-first | Non-goals |

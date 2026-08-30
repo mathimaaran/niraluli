@@ -1,0 +1,48 @@
+// Tamil-0.68: const groups and iota.
+// Go equivalent:
+//
+//	package main
+//
+//	import "fmt"
+//
+//	const (
+//		zero = iota
+//		one
+//		two = iota + 2
+//	)
+//
+//	func main() {
+//		const (
+//			a = iota * 10
+//			b
+//			c
+//		)
+//		fmt.Println(zero)
+//		fmt.Println(one)
+//		fmt.Println(two)
+//		fmt.Println(a)
+//		fmt.Println(b)
+//		fmt.Println(c)
+//	}
+
+தொகுப்பு தொடக்கம்
+
+மாறிலி (
+    பூஜ்ஜியம் = iota
+    ஒன்று
+    இரண்டு = iota + 2
+)
+
+செயல்பாடு தொடக்கம்() {
+    மாறிலி (
+        அ = iota * 10
+        ஆ
+        இ
+    )
+    பதிப்பி(பூஜ்ஜியம்)
+    பதிப்பி(ஒன்று)
+    பதிப்பி(இரண்டு)
+    பதிப்பி(அ)
+    பதிப்பி(ஆ)
+    பதிப்பி(இ)
+}

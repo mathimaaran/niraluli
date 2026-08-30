@@ -151,9 +151,10 @@ type FuncInfo struct {
 
 // VariadicPack records how a call packs trailing args into a []T (Tamil-0.66).
 type VariadicPack struct {
-	Slice Type
-	Elem  Type
-	Fixed int // leading fixed argument count
+	Slice  Type
+	Elem   Type
+	Fixed  int  // leading fixed argument count
+	Expand bool // true when final arg is slice... (Tamil-0.69)
 }
 
 // MethodValueInfo records a method value expression (X.M) for emit.
@@ -266,11 +267,14 @@ type MethodInfo struct {
 
 // StructInfo describes a named struct type.
 type StructInfo struct {
-	Pkg     string // declaring package name
-	Name    string
-	NamePos token.Pos
-	Fields  []StructField
-	Methods map[string]*MethodInfo
+	Pkg               string // declaring package name
+	Name              string
+	NamePos           token.Pos
+	Fields            []StructField
+	Methods           map[string]*MethodInfo
+	Schematic         bool     // generic type template (not emitted)
+	GenericParamNames []string // set on monomorphized instances
+	GenericTypeArgs   []Type   // concrete args for monomorphized instances
 }
 
 // DefinedInfo describes a non-struct named type (வகை T U).
@@ -301,12 +305,14 @@ type Info struct {
 	MethodValues   map[ast.Expr]*MethodValueInfo
 	MethodExprs    map[ast.Expr]*MethodExprInfo
 	PkgFuncValues  map[ast.Expr]*PkgFuncValueInfo
+	PkgVarValues   map[ast.Expr]*PkgVarValueInfo
 	Closures       map[*ast.FuncLit]*ClosureInfo
 	// Locals/params that must be arena-promoted because a nested closure captures them.
 	PromoteInFunc map[*ast.FuncDecl]map[string]Type
 	PromoteInLit  map[*ast.FuncLit]map[string]Type
 	// ConstExprs maps expressions that fold to compile-time constants (Tamil-0.67).
-	ConstExprs map[ast.Expr]ConstValue
+	ConstExprs             map[ast.Expr]ConstValue
+	GenericMethodTemplates map[*ast.FuncDecl]bool // methods on generic types (Tamil-0.72)
 }
 
 // MonoInst is one monomorphized instantiation of a generic function.
@@ -352,6 +358,7 @@ type funcSig struct {
 	decl           *ast.FuncDecl
 	typeParams     []Type // schematic type-parameter ids (ordered)
 	typeParamNames []string
+	constraints    []typeConstraint
 }
 
 func (s *funcSig) generic() bool {
@@ -425,6 +432,8 @@ type Checker struct {
 	pkgs          map[string]*pkgState
 	cur           *pkgState
 	isEntry       bool
+	constIota     int64 // active while checking a const group spec
+	constIotaActive bool
 }
 
 // File type-checks a single source file (as the entry package).
@@ -821,6 +830,14 @@ func (c *Checker) registerType(td *ast.TypeDecl) {
 		c.error(td.Name.Pos(), "type redeclared: %s", name)
 		return
 	}
+	if _, exists := c.cur.genericTypes[name]; exists {
+		c.error(td.Name.Pos(), "type redeclared: %s", name)
+		return
+	}
+	if len(td.TypeParams) > 0 {
+		c.registerGenericType(td)
+		return
+	}
 	c.cur.typeExp[name] = td.Exported
 	if td.Alias {
 		// Placeholder until fill resolves the aliased type.
@@ -960,7 +977,7 @@ func (c *Checker) isFieldType(t Type) bool {
 	if isDefined(t) {
 		return c.isFieldType(c.info.Underlying[t])
 	}
-	return false
+	return IsTypeParam(t)
 }
 
 // comparable reports whether == / != is allowed (Go-like).
@@ -1143,6 +1160,22 @@ func (c *Checker) typeFromName(tn *ast.TypeName) Type {
 			c.error(tn.Pkg.Pos(), "unknown package %s", tn.Pkg.Name)
 			return TypeInvalid
 		}
+		if len(tn.TypeArgs) > 0 {
+			if sch, ok := imp.genericTypes[tn.Name]; ok {
+				if !imp.typeExp[tn.Name] {
+					c.error(tn.TokPos, "type %s.%s is not exported (need வெளி)", tn.Pkg.Name, tn.Name)
+					return TypeInvalid
+				}
+				c.markImportUsed(tn.Pkg.Name)
+				if c.typeArgsAreSchemaParams(tn.TypeArgs, sch) {
+					return sch.schematicType
+				}
+				typeArgs := c.typeArgsFromExprs(tn.TypeArgs)
+				return c.instantiateGenericType(sch, imp, typeArgs, tn.TokPos)
+			}
+			c.error(tn.TokPos, "package %s has no generic type %s", tn.Pkg.Name, tn.Name)
+			return TypeInvalid
+		}
 		c.markImportUsed(tn.Pkg.Name)
 		if t, ok := imp.types[tn.Name]; ok {
 			if !imp.typeExp[tn.Name] {
@@ -1151,7 +1184,22 @@ func (c *Checker) typeFromName(tn *ast.TypeName) Type {
 			}
 			return t
 		}
+		if _, ok := imp.genericTypes[tn.Name]; ok {
+			c.error(tn.TokPos, "cannot use generic type %s.%s without type arguments", tn.Pkg.Name, tn.Name)
+			return TypeInvalid
+		}
 		c.error(tn.TokPos, "package %s has no type %s", tn.Pkg.Name, tn.Name)
+		return TypeInvalid
+	}
+	if len(tn.TypeArgs) > 0 {
+		if sch, st, ok := c.lookupGenericSchema("", tn.Name); ok {
+			if c.typeArgsAreSchemaParams(tn.TypeArgs, sch) {
+				return sch.schematicType
+			}
+			typeArgs := c.typeArgsFromExprs(tn.TypeArgs)
+			return c.instantiateGenericType(sch, st, typeArgs, tn.TokPos)
+		}
+		c.error(tn.TokPos, "unknown generic type %s", tn.Name)
 		return TypeInvalid
 	}
 	switch tn.Name {
@@ -1176,6 +1224,10 @@ func (c *Checker) typeFromName(tn *ast.TypeName) Type {
 		if c.cur != nil {
 			if t, ok := c.cur.types[tn.Name]; ok {
 				return t
+			}
+			if _, ok := c.cur.genericTypes[tn.Name]; ok {
+				c.error(tn.TokPos, "cannot use generic type %s without type arguments", tn.Name)
+				return TypeInvalid
 			}
 		}
 		return TypeInvalid
@@ -1211,6 +1263,10 @@ func (c *Checker) paramsFromFields(fields []*ast.Field) ([]Type, bool) {
 
 func (c *Checker) checkCallArgs(e *ast.CallExpr, params []Type, variadic bool, label string) {
 	if e == nil {
+		return
+	}
+	if e.Ellipsis != (token.Pos{}) {
+		c.checkVariadicExpandCall(e, params, variadic, label)
 		return
 	}
 	if !variadic {
@@ -1252,15 +1308,59 @@ func (c *Checker) checkCallArgs(e *ast.CallExpr, params []Type, variadic bool, l
 	c.info.VariadicPacks[e] = &VariadicPack{Slice: params[fixed], Elem: elem, Fixed: fixed}
 }
 
+func (c *Checker) checkVariadicExpandCall(e *ast.CallExpr, params []Type, variadic bool, label string) {
+	if !variadic {
+		c.error(e.Ellipsis, "invalid use of ... in call to non-variadic %s", label)
+		for _, arg := range e.Args {
+			c.checkExpr(arg)
+		}
+		return
+	}
+	if len(params) == 0 {
+		c.error(e.Pos(), "invalid variadic signature for %s", label)
+		for _, arg := range e.Args {
+			c.checkExpr(arg)
+		}
+		return
+	}
+	if len(e.Args) == 0 {
+		c.error(e.Ellipsis, "invalid use of ... in call to %s", label)
+		return
+	}
+	fixed := len(params) - 1
+	if len(e.Args) != fixed+1 {
+		c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", label, fixed+1, len(e.Args))
+	}
+	for i := 0; i < fixed && i < len(e.Args)-1; i++ {
+		t := c.checkExpr(e.Args[i])
+		if !c.assignable(t, params[i], e.Args[i]) {
+			c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(t))
+		}
+	}
+	sliceArg := e.Args[len(e.Args)-1]
+	st := c.checkExpr(sliceArg)
+	sliceParam := params[fixed]
+	if !c.assignable(st, sliceParam, sliceArg) {
+		c.error(sliceArg.Pos(), "argument %d: want %s, got %s", len(e.Args), c.typStr(sliceParam), c.typStr(st))
+	}
+	elem := ElemOfSlice(c.info, sliceParam)
+	c.info.VariadicPacks[e] = &VariadicPack{Slice: sliceParam, Elem: elem, Fixed: fixed, Expand: true}
+}
+
 func (c *Checker) collectFunc(fn *ast.FuncDecl) {
 	if fn.Name == nil || c.cur == nil {
 		return
 	}
 	name := fn.Name.Name
 	prevEnv := c.typeParamEnv
-	if len(fn.TypeParams) > 0 {
+	if env := c.genericMethodTypeParamEnv(fn); env != nil {
+		c.typeParamEnv = map[string]Type{}
+		for k, v := range env {
+			c.typeParamEnv[k] = v
+		}
+	} else if len(fn.TypeParams) > 0 {
 		if fn.Recv != nil {
-			c.error(fn.Name.Pos(), "type parameters not allowed on methods")
+			c.error(fn.Name.Pos(), "methods cannot declare type parameters; use the receiver type's parameters")
 			return
 		}
 		if name == "தொடக்கம்" {
@@ -1270,28 +1370,29 @@ func (c *Checker) collectFunc(fn *ast.FuncDecl) {
 		c.typeParamEnv = map[string]Type{}
 		seen := map[string]bool{}
 		for _, tp := range fn.TypeParams {
-			if tp == nil || tp.Name == "" {
+			if tp == nil || tp.Name == nil || tp.Name.Name == "" {
 				continue
 			}
-			if seen[tp.Name] {
-				c.error(tp.Pos(), "duplicate type parameter %s", tp.Name)
+			if seen[tp.Name.Name] {
+				c.error(tp.Name.Pos(), "duplicate type parameter %s", tp.Name.Name)
 				continue
 			}
-			seen[tp.Name] = true
-			t := c.allocTypeParam(tp.Name)
-			c.typeParamEnv[tp.Name] = t
+			seen[tp.Name.Name] = true
+			t := c.allocTypeParam(tp.Name.Name)
+			c.typeParamEnv[tp.Name.Name] = t
 		}
 	}
 	sig := &funcSig{results: c.typesFromResults(fn.Results), decl: fn}
 	sig.params, sig.variadic = c.paramsFromFields(fn.Params)
 	if len(fn.TypeParams) > 0 {
 		for _, tp := range fn.TypeParams {
-			if tp == nil {
+			if tp == nil || tp.Name == nil {
 				continue
 			}
-			if t, ok := c.typeParamEnv[tp.Name]; ok {
+			if t, ok := c.typeParamEnv[tp.Name.Name]; ok {
 				sig.typeParams = append(sig.typeParams, t)
-				sig.typeParamNames = append(sig.typeParamNames, tp.Name)
+				sig.typeParamNames = append(sig.typeParamNames, tp.Name.Name)
+				sig.constraints = append(sig.constraints, c.resolveConstraint(tp))
 			}
 		}
 	}
@@ -1310,7 +1411,12 @@ func (c *Checker) collectFunc(fn *ast.FuncDecl) {
 }
 
 func (c *Checker) collectMethod(fn *ast.FuncDecl, sig *funcSig) {
+	prevEnv := c.typeParamEnv
+	if env := c.genericMethodTypeParamEnv(fn); env != nil {
+		c.typeParamEnv = env
+	}
 	rt := c.typeFromExpr(fn.Recv.Type)
+	c.typeParamEnv = prevEnv
 	recvIsPtr := false
 	base := rt
 	if isPointer(rt) {
@@ -1346,6 +1452,9 @@ func (c *Checker) collectMethod(fn *ast.FuncDecl, sig *funcSig) {
 		Variadic:  sig.variadic,
 		Decl:      fn,
 	}
+	if si.Schematic {
+		c.markGenericMethodTemplate(fn)
+	}
 }
 
 func (c *Checker) push() {
@@ -1357,6 +1466,13 @@ func (c *Checker) pop() {
 }
 
 func (c *Checker) checkFunc(fn *ast.FuncDecl) {
+	prevEnv := c.typeParamEnv
+	if env := c.genericMethodTypeParamEnv(fn); env != nil {
+		c.typeParamEnv = map[string]Type{}
+		for k, v := range env {
+			c.typeParamEnv[k] = v
+		}
+	}
 	var sig *funcSig
 	if fn.Recv != nil {
 		rt := c.typeFromExpr(fn.Recv.Type)
@@ -1373,19 +1489,21 @@ func (c *Checker) checkFunc(fn *ast.FuncDecl) {
 			sig = &funcSig{results: c.typesFromResults(fn.Results), decl: fn}
 			sig.params, sig.variadic = c.paramsFromFields(fn.Params)
 		}
-	} else if c.cur != nil {
-		sig = c.cur.funcs[fn.Name.Name]
+	} else {
+		c.typeParamEnv = prevEnv
+		if c.cur != nil {
+			sig = c.cur.funcs[fn.Name.Name]
+		}
+		if sig != nil && sig.generic() {
+			c.typeParamEnv = map[string]Type{}
+			for i, name := range sig.typeParamNames {
+				c.typeParamEnv[name] = sig.typeParams[i]
+			}
+		}
 	}
 	c.curFn = sig
 	prevEncl := c.enclosingFn
 	c.enclosingFn = fn
-	prevEnv := c.typeParamEnv
-	if sig != nil && sig.generic() {
-		c.typeParamEnv = map[string]Type{}
-		for i, name := range sig.typeParamNames {
-			c.typeParamEnv[name] = sig.typeParams[i]
-		}
-	}
 	c.push()
 	if fn.Recv != nil {
 		rt := c.typeFromExpr(fn.Recv.Type)
@@ -1556,6 +1674,8 @@ func (c *Checker) checkStmt(s ast.Stmt) {
 		c.checkVarDecl(s)
 	case *ast.ConstDecl:
 		c.checkConstDecl(s)
+	case *ast.ConstGroupDecl:
+		c.checkConstGroup(s)
 	case *ast.ShortVarDecl:
 		c.checkShortVar(s)
 	case *ast.AssignStmt:
@@ -1903,6 +2023,10 @@ func (c *Checker) checkAssignTarget(lhs ast.Expr) Type {
 		}
 		lt, ok := c.scope.lookup(lhs.Name)
 		if !ok {
+			if pv, pok := c.lookupPkgVar(lhs.Name); pok {
+				c.recordPkgVarRef(lhs, c.cur.name, lhs.Name)
+				return pv.typ
+			}
 			c.error(lhs.Pos(), "undeclared variable: %s", lhs.Name)
 			return TypeInvalid
 		}
@@ -1929,7 +2053,10 @@ func (c *Checker) isAddressable(e ast.Expr) bool {
 		if e.Name == "_" || c.isConstIdent(e.Name) {
 			return false
 		}
-		return true
+		if _, ok := c.scope.lookup(e.Name); ok {
+			return true
+		}
+		return c.isPkgVarIdent(e.Name)
 	case *ast.IndexExpr, *ast.SelectorExpr:
 		return true
 	case *ast.UnaryExpr:
@@ -2181,6 +2308,9 @@ func (c *Checker) checkExpr(e ast.Expr) Type {
 		} else if pc, pok := c.lookupPkgConst(e.Name); pok {
 			t = pc.typ
 			c.recordConstExpr(e, pc.val)
+		} else if pv, pok := c.lookupPkgVar(e.Name); pok {
+			t = pv.typ
+			c.recordPkgVarRef(e, c.cur.name, e.Name)
 		} else {
 			if c.cur != nil {
 				if sig := c.cur.funcs[e.Name]; sig != nil {
@@ -2466,6 +2596,15 @@ func (c *Checker) checkSelectorExpr(e *ast.SelectorExpr) Type {
 				}
 				c.recordConstExpr(e, pc.val)
 				return pc.typ
+			}
+			if pv, ok := imp.vars[e.Sel.Name]; ok {
+				if !pv.exported {
+					c.error(e.Sel.Pos(), "variable %s.%s is not exported (need வெளி)", imp.name, e.Sel.Name)
+					return TypeInvalid
+				}
+				c.markImportUsed(id.Name)
+				c.recordPkgVarRef(e, imp.name, e.Sel.Name)
+				return pv.typ
 			}
 			c.error(e.Sel.Pos(), "package %s has no exported name %s", id.Name, e.Sel.Name)
 			return TypeInvalid
@@ -3264,7 +3403,20 @@ func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name stri
 	for i, arg := range e.Args {
 		argTypes[i] = c.checkExpr(arg)
 	}
-	if sig.variadic {
+	if e.Ellipsis != (token.Pos{}) {
+		if !sig.variadic {
+			c.error(e.Ellipsis, "invalid use of ... in call to non-variadic %s", name)
+			return TypeInvalid
+		}
+		if len(sig.params) == 0 {
+			c.error(e.Pos(), "invalid variadic signature for %s", name)
+			return TypeInvalid
+		}
+		fixed := len(sig.params) - 1
+		if len(e.Args) != fixed+1 {
+			c.error(e.Pos(), "wrong number of arguments to %s (want %d, got %d)", name, fixed+1, len(e.Args))
+		}
+	} else if sig.variadic {
 		if len(sig.params) == 0 {
 			c.error(e.Pos(), "invalid variadic signature for %s", name)
 			return TypeInvalid
@@ -3299,14 +3451,21 @@ func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name stri
 					i+1, c.typStr(sig.params[i]), c.typStr(argTypes[i]))
 			}
 		}
-		elemSch := ElemOfSlice(c.info, sig.params[fixed])
-		for i := fixed; i < len(argTypes); i++ {
-			if argTypes[i] == TypeInvalid {
-				continue
+		if e.Ellipsis != (token.Pos{}) && len(argTypes) > 0 {
+			if argTypes[len(argTypes)-1] != TypeInvalid && !c.unify(sig.params[fixed], argTypes[len(argTypes)-1], subst) {
+				c.error(e.Args[len(e.Args)-1].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
+					len(e.Args), c.typStr(sig.params[fixed]), c.typStr(argTypes[len(argTypes)-1]))
 			}
-			if !c.unify(elemSch, argTypes[i], subst) {
-				c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
-					i+1, c.typStr(elemSch), c.typStr(argTypes[i]))
+		} else {
+			elemSch := ElemOfSlice(c.info, sig.params[fixed])
+			for i := fixed; i < len(argTypes); i++ {
+				if argTypes[i] == TypeInvalid {
+					continue
+				}
+				if !c.unify(elemSch, argTypes[i], subst) {
+					c.error(e.Args[i].Pos(), "argument %d: cannot infer type parameter (want %s, got %s)",
+						i+1, c.typStr(elemSch), c.typStr(argTypes[i]))
+				}
 			}
 		}
 	} else {
@@ -3327,31 +3486,12 @@ func (c *Checker) checkGenericCall(e *ast.CallExpr, sig *funcSig, pkg, name stri
 	}
 	params := c.substTypes(sig.params, subst)
 	results := c.substTypes(sig.results, subst)
-	if sig.variadic && len(params) > 0 {
-		fixed := len(params) - 1
-		for i := 0; i < fixed && i < len(e.Args); i++ {
-			if argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], params[i], e.Args[i]) {
-				c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(argTypes[i]))
-			}
-		}
-		elem := ElemOfSlice(c.info, params[fixed])
-		for i := fixed; i < len(e.Args); i++ {
-			if argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], elem, e.Args[i]) {
-				c.error(e.Args[i].Pos(), "argument %d: want %s, got %s", i+1, c.typStr(elem), c.typStr(argTypes[i]))
-			}
-		}
-		c.info.VariadicPacks[e] = &VariadicPack{Slice: params[fixed], Elem: elem, Fixed: fixed}
-	} else {
-		for i, arg := range e.Args {
-			if i < len(params) && argTypes[i] != TypeInvalid && !c.assignable(argTypes[i], params[i], arg) {
-				c.error(arg.Pos(), "argument %d: want %s, got %s", i+1, c.typStr(params[i]), c.typStr(argTypes[i]))
-			}
-		}
-	}
+	c.checkCallArgs(e, params, sig.variadic, name)
 	typeArgs := make([]Type, len(sig.typeParams))
 	for i, tp := range sig.typeParams {
 		typeArgs[i] = subst[tp]
 	}
+	c.checkTypeArgsConstraints(typeArgs, sig.constraints, e.Pos(), name)
 	inst := c.recordMonoInst(pkg, name, sig.decl, typeArgs, params, results)
 	if c.info != nil && e != nil {
 		c.info.CallInst[e] = inst

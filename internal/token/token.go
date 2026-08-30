@@ -63,6 +63,7 @@ const (
 	QUO // /
 	REM // %
 	AND // & (unary address-of)
+	OR  // | (constraint union in type params)
 	ARROW // <-
 
 	EQL    // ==
@@ -145,6 +146,7 @@ var kindNames = [...]string{
 	QUO: "QUO",
 	REM: "REM",
 	AND: "AND",
+	OR:  "OR",
 	ARROW: "ARROW",
 
 	EQL:    "EQL",

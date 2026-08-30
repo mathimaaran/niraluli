@@ -8,15 +8,17 @@ import (
 )
 
 type pkgState struct {
-	name       string
-	file       *ast.File
-	funcs      map[string]*funcSig
-	types      map[string]Type
-	typeExp    map[string]bool // name → வெளி
-	aliases    map[string]bool // name → pending/resolved type alias
-	consts     map[string]*pkgConst
-	imports    map[string]*pkgState
-	importUsed map[string]bool // local import qualifier referenced
+	name         string
+	file         *ast.File
+	funcs        map[string]*funcSig
+	types        map[string]Type
+	typeExp      map[string]bool // name → வெளி
+	aliases      map[string]bool // name → pending/resolved type alias
+	genericTypes map[string]*genericTypeSchema
+	consts       map[string]*pkgConst
+	vars         map[string]*pkgVar
+	imports      map[string]*pkgState
+	importUsed   map[string]bool // local import qualifier referenced
 }
 
 // CheckProgram type-checks merged package files in dependency order (deps first).
@@ -47,10 +49,12 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 		MethodValues:  map[ast.Expr]*MethodValueInfo{},
 		MethodExprs:   map[ast.Expr]*MethodExprInfo{},
 		PkgFuncValues: map[ast.Expr]*PkgFuncValueInfo{},
+		PkgVarValues:  map[ast.Expr]*PkgVarValueInfo{},
 		Closures:      map[*ast.FuncLit]*ClosureInfo{},
 		PromoteInFunc: map[*ast.FuncDecl]map[string]Type{},
 		PromoteInLit:  map[*ast.FuncLit]map[string]Type{},
-		ConstExprs:    map[ast.Expr]ConstValue{},
+		ConstExprs:             map[ast.Expr]ConstValue{},
+		GenericMethodTemplates: map[*ast.FuncDecl]bool{},
 	}
 	c := &Checker{
 		scope:         &scope{vars: map[string]Type{}},
@@ -76,15 +80,17 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 			return nil, []error{Error{Pos: f.Package.Name.Pos(), Msg: fmt.Sprintf("duplicate package %s", name)}}
 		}
 		c.pkgs[name] = &pkgState{
-			name:       name,
-			file:       f,
-			funcs:      map[string]*funcSig{},
-			types:      map[string]Type{},
-			typeExp:    map[string]bool{},
-			aliases:    map[string]bool{},
-			consts:     map[string]*pkgConst{},
-			imports:    map[string]*pkgState{},
-			importUsed: map[string]bool{},
+			name:         name,
+			file:         f,
+			funcs:        map[string]*funcSig{},
+			types:        map[string]Type{},
+			typeExp:      map[string]bool{},
+			aliases:      map[string]bool{},
+			genericTypes: map[string]*genericTypeSchema{},
+			consts:       map[string]*pkgConst{},
+			vars:         map[string]*pkgVar{},
+			imports:      map[string]*pkgState{},
+			importUsed:   map[string]bool{},
 		}
 	}
 	for _, f := range merged {
@@ -140,14 +146,16 @@ func CheckProgram(merged []*ast.File, entry string) (*ProgramInfo, []error) {
 			switch d := d.(type) {
 			case *ast.FuncDecl:
 				c.collectFunc(d)
-			case *ast.VarDecl:
-				c.error(d.Pos(), "top-level variables not supported in Tamil-0")
 			}
 		}
 	}
 	for _, f := range merged {
 		c.cur = c.pkgs[f.Package.Name.Name]
 		c.collectPackageConsts(f)
+	}
+	for _, f := range merged {
+		c.cur = c.pkgs[f.Package.Name.Name]
+		c.collectPackageVars(f)
 	}
 	for _, f := range merged {
 		c.cur = c.pkgs[f.Package.Name.Name]

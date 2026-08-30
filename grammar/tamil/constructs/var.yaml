@@ -1,22 +1,23 @@
-id: var
-status: specified
-subset: Tamil-0
-go_inspired: 'var IdentifierList Type [ "=" ExpressionList ]'
-go_ebnf: |
-  VarDecl = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
-  VarSpec = IdentifierList ( Type [ "=" ExpressionList ] | "=" ExpressionList ) .
-tamil_ebnf: |
+status: codegen
+subset: Tamil-0.70
+go_analogue: var
+syntax: |
   VarDecl = "மாறி" IdentifierList Type [ "=" ExpressionList ] .
-tamil_keywords:
-  var: மாறி
-ast:
-  type: VarDecl
-  fields: [names, type, values]
-semantics: >
-  Declares variables with an explicit type (முழுஎண், நிலை, or சரம்).
-  Short declaration := is also allowed — see short-var.yaml.
+  # Package-level and block-level. Optional வெளி for package export.
+semantics: |
+  Declares variables with an explicit type. Tamil-0.70 adds package-level
+  மாறி (top-level variables were previously rejected). Package vars are
+  zero-initialized; explicit initializers run in a per-package __init_vars
+  hook before entry. Same-package read/assign uses the bare name; other
+  packages use pkg.Name with வெளி. Block-level மாறி unchanged.
 examples:
-  - tamil: |
-      மாறி x முழுஎண் = 42
-    go_equivalent: |
-      var x int = 42
+  - |
+      வெளி மாறி பதிப்பு முழுஎண் = 1
+      மாறி எண் முழுஎண்
+      செயல்பாடு தொடக்கம்() {
+          எண் = 42
+          பதிப்பி(எண்)
+      }
+notes:
+  - "Short declare := remains local only."
+  - "No parenthesized var ( … ) groups yet."

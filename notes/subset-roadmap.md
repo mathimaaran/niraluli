@@ -100,6 +100,11 @@ Out of scope for Tamil-0:
 - [x] fmt-style formatting (`கொணர் "வடிவம்"`)
 - [x] Variadic parameters (`...T`)
 - [x] Compile-time constants (`மாறிலி`)
+- [x] Const groups and `iota`
+- [x] Slice `...` expansion at variadic call sites
+- [x] Package-level variables (`மாறி`)
+- [x] Generic types and union constraints
+- [x] Generic methods on generic types
 
 ## Later growth
 

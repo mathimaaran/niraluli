@@ -1,11 +1,11 @@
 # Tamil keyword glossary
 
 status: active
-subset: Tamil-0.67
+subset: Tamil-0.72
 style: semantic Tamil
 note: >
-  Tamil-0 remains frozen as the base. Tamil-0.67 adds compile-time constants
-  (மாறிலி). Further breaking changes need a subset bump and a dated note in
+  Tamil-0 remains frozen as the base. Tamil-0.72 adds generic methods on generic types.
+  Further breaking changes need a subset bump and a dated note in
   notes/design-decisions.md.
 
 keywords:

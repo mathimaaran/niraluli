@@ -1,24 +1,22 @@
 status: codegen
-subset: Tamil-0.66
-go_analogue: "...T"
+subset: Tamil-0.69
+go_analogue: "...T" / slice...
 syntax: |
   ParameterDecl = identifier [ "..." ] Type .
-  # ...T only as the final parameter of a function, method, or function literal.
-  # Function types: செயல்பாடு(...T) or செயல்பாடு(U, ...T).
+  CallExpr      = Fun "(" [ ArgList [ "..." ] ] ")" .
+  # Final call argument may be followed by ... to expand a []T slice into a ...T parameter.
 semantics: |
-  Tamil-0.66 adds Go-style variadic parameters. Inside the function the name
-  has type []T. Calls may pass zero or more trailing arguments of type T; the
-  compiler packs them into a []T. slice... expand at call sites is not included.
-  Deferred/goroutine calls of variadic callees pack at the original call site
-  capture path may be incomplete — prefer ordinary calls for now.
+  Tamil-0.66 added Go-style variadic parameters: inside the function the name has
+  type []T and trailing T values at call sites are packed into a temporary slice.
+  Tamil-0.69 adds slice expansion: when the final argument is a []T followed by ...,
+  its elements are passed as the variadic arguments (the callee still receives []T).
+  Example: கூட்டு(எண்கள்...) where கூட்டு takes ...முழுஎண் and எண்கள் is []முழுஎண்.
 examples:
   - |
-      செயல்பாடு கூட்டு(எண்கள் ...முழுஎண்) முழுஎண் {
-          மாறி மொத்தம் முழுஎண் = 0
-          சுழல் _, வ := ஒவ்வொரு எண்கள் { மொத்தம் = மொத்தம் + வ }
-          திருப்பு மொத்தம்
-      }
-      பதிப்பி(கூட்டு(1, 2, 3))
+      செயல்பாடு கூட்டு(எண்கள் ...முழுஎண்) முழுஎண் { ... }
+      மாறி xs []முழுஎண் = []முழுஎண்{4, 5, 6}
+      பதிப்பி(கூட்டு(1, 2, 3))   // pack literals
+      பதிப்பி(கூட்டு(xs...))     // expand slice
 notes:
   - "No new Tamil keyword; ... is punctuation like Go."
-  - "வடிவம்.வடிவமை now uses ...சரம்."
+  - "Expand applies only to the final argument of a variadic call."

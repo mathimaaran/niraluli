@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Niraluli v0.67 language reference.">
+  <meta name="description" content="Niraluli v0.72 language reference.">
   <title>Language Reference — Niraluli Documentation</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="docs.js"></script>
@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">Reference</p>
     <h1>Language reference</h1>
-    <p class="lead">The implemented v0.67 source language: lexical rules, types, declarations (including <code>மாறிலி</code> constants), expressions, control flow, aggregates, functions (including variadic <code>...T</code>), packages, and built-ins.</p>
+    <p class="lead">The implemented v0.72 source language: lexical rules, types, declarations, expressions, control flow, aggregates, functions (including generics and variadic <code>...T</code>), packages, and built-ins.</p>
   </section>
 
   <div class="toc">
@@ -109,12 +109,16 @@
 வயது := 1
 
 மாறிலி அதிகம் முழுஎண் = 10
-மாறிலி வாழ்த்து = "வணக்கம்"
+மாறிலி (
+    பூஜ்ஜியம் = iota
+    ஒன்று
+)
 
 எண்ணிக்கை = 10
 அ, ஆ = ஆ, அ</code></pre>
   <p><code>:=</code> infers types and must introduce at least one new name in its scope. Parallel assignment evaluates right-hand values before assignment. Multiple-return calls unpack through <code>:=</code> or <code>=</code>.</p>
-  <p><code>மாறிலி</code> declares compile-time constants (package or block scope). The initializer must be a constant expression; assigning to a constant is an error. <code>iota</code> and parenthesized const groups are not in v0.67.</p>
+  <p><code>மாறிலி</code> declares compile-time constants (package or block scope). The initializer must be a constant expression; assigning to a constant is an error. Parenthesized groups support multiple specs; within a group, <code>iota</code> counts 0, 1, 2, … and omitted RHS/type repeat the previous spec.</p>
+  <p>Package-level <code>மாறி</code> (Tamil-0.70) declares variables at file scope with optional <code>= init</code>. Without an initializer the variable is zero-initialized; explicit initializers run before <code>தொடக்கம்</code> via a generated init hook. Prefix <code>வெளி</code> to export a package variable.</p>
   <p>The blank identifier <code>_</code> discards values:</p>
   <pre><code>மதிப்பு, _ := கணக்கு()
 _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pre>
@@ -275,18 +279,20 @@ _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pr
   <pre><code>தள்ளிவை வளம்.மூடு()
 தள்ளிவை முடிந்தது    // zero-argument sugar for முடிந்தது()</code></pre>
 
-  <h2 id="generics">Function generics</h2>
-  <pre><code>செயல்பாடு அடையாளம்[யா](x யா) யா {
-    திருப்பு x
-}
+  <h2 id="generics">Generics</h2>
+  <pre><code>வகை பெட்டி[யா] அமைப்பு { val யா }
+வகை எண்[டி முழுஎண் | சரம்] அமைப்பு { x டி }
 
-செயல்பாடு தலை[யா](xs []யா) யா {
-    திருப்பு xs[0]
-}
+செயல்பாடு (b பெட்டி[யா]) பெறு() யா { திருப்பு b.val }
+செயல்பாடு (b *பெட்டி[யா]) வை(v யா) { b.val = v }
 
+செயல்பாடு அடையாளம்[யா](x யா) யா { திருப்பு x }
+செயல்பாடு தலை[யா](xs []யா) யா { திருப்பு xs[0] }
+
+a := பெட்டி[முழுஎண்]{val: 42}
 எண் := அடையாளம்(42)
 பெயர் := அடையாளம்[சரம்]("நிரலுளி")</code></pre>
-  <p>Generics are currently limited to unconstrained function type parameters. Multiple parameters, slices of type parameters, inference, explicit type arguments, and cross-package use are supported. Generic types, generic methods, constraints, and an <code>any</code> interface are not implemented. The C backend monomorphizes each instantiation.</p>
+  <p>Function and type generics use type parameters in square brackets. Constraints may be omitted or written as <code>எதுவும்</code> (any), or as a union of concrete types (<code>முழுஎண் | சரம்</code>). Calls infer type arguments or accept explicit <code>f[T](…)</code>. Generic structs and defined types instantiate as <code>Name[T]{…}</code>. Methods on generic types use the type's parameters in the receiver (<code>(b பெட்டி[யா])</code>), not method-level <code>[T]</code>; each instantiation gets monomorphized methods. The C backend monomorphizes each instantiation. Interface constraints are not implemented.</p>
 
   <h2 id="packages">Packages and visibility</h2>
   <pre><code>தொகுப்பு பயன்பாடு
@@ -302,9 +308,8 @@ _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pr
     <li>All files in one package use the same package name.</li>
     <li>Imports resolve by directory; imported calls use a qualifier.</li>
     <li>Unused non-blank imports are errors. Import cycles report their path.</li>
-    <li>Top-level functions/types/constants and struct fields require <code>வெளி</code> for access by another package.</li>
-    <li>Top-level variables are not supported in v0.67; use <code>மாறிலி</code> for package-level constants.</li>
-    <li>Final function parameters may be variadic (<code>...T</code>); see Tamil-0.66.</li>
+    <li>Top-level functions/types/constants/variables and struct fields require <code>வெளி</code> for access by another package.</li>
+    <li>Final function parameters may be variadic (<code>...T</code>); the final call argument may be <code>slice...</code> (Tamil-0.69).</li>
     <li>Compiler packages <code>"வலை"</code>, <code>"பரிமாற்றம்"</code>, <code>"தரவுத்தளம்"</code>, <code>"கோப்பு"</code>, <code>"நேரம்"</code>, and <code>"வடிவம்"</code> resolve from <code>stdlib/</code>. See the <a href="standard-library.html">standard library</a> reference.</li>
   </ul>
 

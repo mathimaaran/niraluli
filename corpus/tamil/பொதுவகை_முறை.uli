@@ -1,0 +1,43 @@
+// Tamil-0.72: generic methods on generic types.
+// Go equivalent:
+//
+//	package main
+//
+//	import "fmt"
+//
+//	type Box[T any] struct { val T }
+//
+//	func (b Box[T]) Get() T { return b.val }
+//	func (b *Box[T]) Set(v T) { b.val = v }
+//
+//	func main() {
+//		b := Box[int]{val: 7}
+//		fmt.Println(b.Get())
+//		b.Set(42)
+//		fmt.Println(b.Get())
+//		c := Box[string]{val: "நிரலுளி"}
+//		fmt.Println(c.Get())
+//	}
+
+தொகுப்பு தொடக்கம்
+
+வகை பெட்டி[யா] அமைப்பு {
+    val யா
+}
+
+செயல்பாடு (b பெட்டி[யா]) பெறு() யா {
+    திருப்பு b.val
+}
+
+செயல்பாடு (b *பெட்டி[யா]) வை(v யா) {
+    b.val = v
+}
+
+செயல்பாடு தொடக்கம்() {
+    a := பெட்டி[முழுஎண்]{val: 7}
+    பதிப்பி(a.பெறு())
+    a.வை(42)
+    பதிப்பி(a.பெறு())
+    c := பெட்டி[சரம்]{val: "நிரலுளி"}
+    பதிப்பி(c.பெறு())
+}

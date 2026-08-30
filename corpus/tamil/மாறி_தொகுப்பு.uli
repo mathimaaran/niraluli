@@ -1,0 +1,30 @@
+// Tamil-0.70: package-level variables (மாறி).
+// Go equivalent:
+//
+//	package main
+//
+//	import "fmt"
+//
+//	var version = 1
+//	var count int
+//	var name = "நிரலுளி"
+//
+//	func main() {
+//		count = 42
+//		fmt.Println(count)
+//		fmt.Println(version)
+//		fmt.Println(name)
+//	}
+
+தொகுப்பு தொடக்கம்
+
+வெளி மாறி பதிப்பு முழுஎண் = 1
+மாறி எண் முழுஎண்
+மாறி பெயர் சரம் = "நிரலுளி"
+
+செயல்பாடு தொடக்கம்() {
+    எண் = 42
+    பதிப்பி(எண்)
+    பதிப்பி(பதிப்பு)
+    பதிப்பி(பெயர்)
+}

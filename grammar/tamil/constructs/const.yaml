@@ -1,25 +1,34 @@
 status: codegen
-subset: Tamil-0.67
-go_analogue: const
+subset: Tamil-0.68
+go_analogue: const / iota
 syntax: |
-  ConstDecl = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
+  ConstDecl      = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
+  ConstGroupDecl = "மாறிலி" "(" ConstSpec { ";" ConstSpec } ")" .
+  ConstSpec      = IdentifierList [ Type ] [ "=" ExpressionList ] .
   # Package-level and block-level. Optional வெளி for package export.
-  # No parenthesized const ( … ) groups; no iota in this subset.
+  # iota is the predeclared ASCII identifier iota (Go-style).
 semantics: |
-  Tamil-0.67 adds Go-style compile-time constants. RHS must be a constant
-  expression (literals, other consts, unary +/-/!, arithmetic, string +,
-  comparisons). Allowed types: முழுஎண், மிதவைஎண், நிலை, சரம், இருமி8,
-  இருமி32 (and defined types with those underlyings). Keyword மாறிலி is
-  distinct from நிலை (bool type). Values are folded and inlined by the
-  C emitter. Assigning to a constant is an error.
+  Tamil-0.67+ compile-time constants with Tamil-0.68 parenthesized groups and
+  iota. Within a group, iota is 0 for the first ConstSpec and increments by 1
+  for each subsequent spec. Omitted RHS repeats the previous spec's expressions
+  (re-evaluated with the new iota). Omitted type repeats the previous type.
+  RHS must be a constant expression (literals, consts, iota, unary +/-/!,
+  arithmetic, string +, comparisons). Allowed types: scalar types only.
+  Values are folded and inlined by the C emitter.
 examples:
   - |
-      மாறிலி அதிகம் முழுஎண் = 10
-      மாறிலி வாழ்த்து = "வணக்கம்"
+      மாறிலி (
+          பூஜ்ஜியம் = iota
+          ஒன்று
+          இரண்டு = iota + 2
+      )
       செயல்பாடு தொடக்கம்() {
-          மாறிலி இரட்டி = அதிகம் * 2
-          பதிப்பி(இரட்டி)
+          மாறிலி (
+              அ = iota * 10
+              ஆ
+          )
+          பதிப்பி(பூஜ்ஜியம்)
       }
 notes:
-  - "Do not reuse நிலை for const — frozen as bool type since Tamil-0."
-  - "iota and const ( … ) blocks deferred."
+  - "Keyword மாறிலி is distinct from நிலை (bool type)."
+  - "Bit-shift iota patterns (1 << iota) wait on shift operators."

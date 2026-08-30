@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.67** (2026-08-23) — compile-time constants `மாறிலி`.
+Status: **Tamil-0.72** (2026-08-30) — generic methods on generic types.
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -10,7 +10,7 @@ PackageClause = "தொகுப்பு" PackageName .
 PackageName   = identifier .
 ImportDecl    = "கொணர்" [ identifier ] string_lit .
 
-TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | ConstDecl | VarDecl | TypeDecl ) .
+TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | ConstDecl | ConstGroupDecl | VarDecl | TypeDecl ) .
 
 TypeDecl   = "வகை" identifier ( "=" Type | TypeLit | Type ) .
 TypeLit    = StructType .
@@ -20,7 +20,9 @@ FieldDecl  = [ "வெளி" ] identifier Type .
 FunctionDecl  = "செயல்பாடு" [ Receiver ] FunctionName [ TypeParams ] Signature FunctionBody .
 Receiver      = "(" identifier Type ")" .
 FunctionName  = identifier .
-TypeParams    = "[" identifier { "," identifier } "]" .
+TypeParams    = "[" TypeParam { "," TypeParam } "]" .
+TypeParam     = identifier [ Constraint ] .
+Constraint    = Type { "|" Type } | "எதுவும்" .
 Signature     = "(" [ ParameterList ] ")" [ Result ] .
 ParameterList = ParameterDecl { "," ParameterDecl } .
 ParameterDecl = identifier [ "..." ] Type .
@@ -40,7 +42,9 @@ QualifiedName = [ identifier "." ] identifier .
 PointerType   = "*" Type .
 
 VarDecl       = "மாறி" IdentifierList Type [ "=" ExpressionList ] .
-ConstDecl     = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
+ConstDecl      = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
+ConstGroupDecl = "மாறிலி" "(" ConstSpec { ";" ConstSpec } ")" .
+ConstSpec      = IdentifierList [ Type ] [ "=" ExpressionList ] .
 ShortVarDecl  = IdentifierList ":=" ExpressionList .
 IdentifierList = identifier { "," identifier } .
 ExpressionList = Expression { "," Expression } .
@@ -48,7 +52,7 @@ ExpressionList = Expression { "," Expression } .
 Block         = "{" StatementList "}" .
 StatementList = { Statement } .
 
-Statement     = ConstDecl | VarDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
+Statement     = ConstDecl | ConstGroupDecl | VarDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
 DeferStmt     = "தள்ளிவை" ( CallExpr | identifier | SelectorExpr ) .
 SimpleStmt    = ExpressionStmt | Assignment | ShortVarDecl .
 ExpressionStmt = Expression .
@@ -256,10 +260,14 @@ Comparable keys: floats, pointers, structs, arrays. See `constructs/map-keys.yam
 
 `இருமி8`, `இருமி32`, `[]இருமி8` / `[]இருமி32` ↔ `சரம்`. See `constructs/byte-rune.yaml`.
 
-## Generics (Tamil-0.40 / 0.41)
+## Generics (Tamil-0.40 / 0.41 / 0.71 / 0.72)
 
-Unconstrained function type params `[யா, ஆ]`; `[]யா`; inference or
-`f[T](…)` / `f[T,U](…)`; exported via `கொணர்`. See `constructs/generics.yaml`.
+Unconstrained function type params `[யா, ஆ]`; optional union constraints
+`[T முழுஎண் | சரம்]` or explicit `எதுவும்` (any). Tamil-0.71 adds generic
+`வகை` declarations and `Name[T]` instantiation (structs and defined types).
+Tamil-0.72 adds methods on generic types: receiver uses the type's parameters
+(`(b பெட்டி[யா])`), monomorphized per instantiation. Inference or `f[T](…)` /
+`f[T,U](…)`; exported via `கொணர்`. See `constructs/generics.yaml`.
 
 ## Function values (Tamil-0.44)
 
@@ -341,20 +349,26 @@ No new syntax. Stdlib package `வடிவம்` (`கொணர் "வடி�
 `வடிவமை` over string args, scalar `*உரை` helpers, and `இணை`.
 See `constructs/fmt.yaml`.
 
-## Variadic parameters (Tamil-0.66)
+## Variadic parameters (Tamil-0.66 / 0.69)
 
 Final parameter may be `பெயர் ...வகை` (Go-style). Inside the function the
 parameter has type `[]வகை`. Calls pack zero or more trailing args into that
-slice. See `constructs/variadic.yaml`. `வடிவம்.வடிவமை` uses `...சரம்`.
+slice. Tamil-0.69 adds `slice...` on the final call argument to expand a
+`[]T` into the variadic parameter. See `constructs/variadic.yaml`.
+`வடிவம்.வடிவமை` uses `...சரம்`.
 
-## Constants (Tamil-0.67)
+## Constants (Tamil-0.67 / 0.68)
 
 `மாறிலி` declares compile-time constants at package or block scope.
 RHS must be a constant expression; values are folded and inlined.
-No `iota` and no parenthesized `மாறிலி ( … )` groups yet.
+Tamil-0.68 adds parenthesized groups and the predeclared identifier `iota`
+(0, 1, 2, … per spec in a group; omitted RHS/type repeat the previous spec).
 See `constructs/const.yaml`. Keyword is **not** `நிலை` (bool type).
 
 ## Entry convention
+
+Package-level `மாறிலி` (Tamil-0.67+) and `மாறி` (Tamil-0.70) may appear
+before functions. Optional `வெளி` exports names to other packages.
 
 1. `தொகுப்பு தொடக்கம்` (every file in the package)
 2. `செயல்பாடு தொடக்கம்() { … }` (exactly once in the package)

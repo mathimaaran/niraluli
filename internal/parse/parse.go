@@ -237,9 +237,17 @@ func (p *Parser) parseType() ast.TypeExpr {
 		if p.tok.Kind == token.PERIOD {
 			p.next()
 			name := p.parseIdent()
-			return &ast.TypeName{TokPos: id.NamePos, Pkg: id, Name: name.Name}
+			tn := &ast.TypeName{TokPos: id.NamePos, Pkg: id, Name: name.Name}
+			if p.tok.Kind == token.LBRACK {
+				tn.TypeArgs = p.parseTypeArgList()
+			}
+			return tn
 		}
-		return &ast.TypeName{TokPos: id.NamePos, Name: id.Name}
+		tn := &ast.TypeName{TokPos: id.NamePos, Name: id.Name}
+		if p.tok.Kind == token.LBRACK {
+			tn.TypeArgs = p.parseTypeArgList()
+		}
+		return tn
 	default:
 		p.errorExpected(fmt.Sprintf("expected type, got %s", tok.Kind))
 		p.advancePastError()
@@ -295,15 +303,23 @@ func (p *Parser) parseTypeDecl(exported bool, exportPos token.Pos) *ast.TypeDecl
 	}
 	p.expect(token.TYPE)
 	name := p.parseIdent()
+	var typeParams []*ast.TypeParam
+	if p.tok.Kind == token.LBRACK {
+		typeParams = p.parseTypeParams()
+	}
 	// வகை Name = Type  (alias)
 	if p.tok.Kind == token.ASSIGN {
+		if len(typeParams) > 0 {
+			p.errorExpected("generic type aliases not supported yet")
+		}
 		p.next()
 		return &ast.TypeDecl{
-			TokPos:   pos,
-			Exported: exported,
-			Name:     name,
-			Alias:    true,
-			Type:     p.parseType(),
+			TokPos:     pos,
+			Exported:   exported,
+			Name:       name,
+			TypeParams: typeParams,
+			Alias:      true,
+			Type:       p.parseType(),
 		}
 	}
 	// வகை Name அமைப்பு { … }
@@ -329,9 +345,10 @@ func (p *Parser) parseTypeDecl(exported bool, exportPos token.Pos) *ast.TypeDecl
 		}
 		rbrace := p.expect(token.RBRACE)
 		return &ast.TypeDecl{
-			TokPos:   pos,
-			Exported: exported,
-			Name:     name,
+			TokPos:     pos,
+			Exported:   exported,
+			Name:       name,
+			TypeParams: typeParams,
 			Type: &ast.StructType{
 				TokPos: stPos,
 				Fields: fields,
@@ -343,10 +360,11 @@ func (p *Parser) parseTypeDecl(exported bool, exportPos token.Pos) *ast.TypeDecl
 	// வகை Name Type  (defined type)
 	if startsType(p.tok.Kind) {
 		return &ast.TypeDecl{
-			TokPos:   pos,
-			Exported: exported,
-			Name:     name,
-			Type:     p.parseType(),
+			TokPos:     pos,
+			Exported:   exported,
+			Name:       name,
+			TypeParams: typeParams,
+			Type:       p.parseType(),
 		}
 	}
 	p.errorExpected("expected அமைப்பு, type, or '=' after வகை name")
@@ -371,7 +389,7 @@ func (p *Parser) parseFuncDecl(exported bool, exportPos token.Pos) *ast.FuncDecl
 		recv = &ast.Field{Name: rname, Type: rtyp}
 	}
 	name := p.parseIdent()
-	var typeParams []*ast.Ident
+	var typeParams []*ast.TypeParam
 	if p.tok.Kind == token.LBRACK {
 		typeParams = p.parseTypeParams()
 	}
@@ -396,17 +414,56 @@ func (p *Parser) parseFuncDecl(exported bool, exportPos token.Pos) *ast.FuncDecl
 	}
 }
 
-// parseTypeParams parses [ ident { "," ident } ] (unconstrained).
-func (p *Parser) parseTypeParams() []*ast.Ident {
+// parseTypeParams parses [ ident [Constraint] { "," ident [Constraint] } ].
+// Constraint is a type or union T | U | V; omitted or எதுவும் means any.
+func (p *Parser) parseTypeParams() []*ast.TypeParam {
 	p.expect(token.LBRACK)
-	var list []*ast.Ident
-	list = append(list, p.parseIdent())
-	for p.tok.Kind == token.COMMA {
+	var list []*ast.TypeParam
+	for {
+		name := p.parseIdent()
+		tp := &ast.TypeParam{Name: name}
+		if p.tok.Kind != token.COMMA && p.tok.Kind != token.RBRACK {
+			tp.ConstraintTypes = p.parseConstraintTypes()
+		}
+		list = append(list, tp)
+		if p.tok.Kind != token.COMMA {
+			break
+		}
 		p.next()
-		list = append(list, p.parseIdent())
 	}
 	p.skipNewlineSemi()
 	p.expect(token.RBRACK)
+	return list
+}
+
+// parseTypeArgList parses [ Type { "," Type } ] after a type name.
+func (p *Parser) parseTypeArgList() []ast.TypeExpr {
+	p.expect(token.LBRACK)
+	var list []ast.TypeExpr
+	list = append(list, p.parseType())
+	for p.tok.Kind == token.COMMA {
+		p.next()
+		list = append(list, p.parseType())
+	}
+	p.skipNewlineSemi()
+	p.expect(token.RBRACK)
+	return list
+}
+
+// parseConstraintTypes parses T | U | V constraint union.
+func (p *Parser) parseConstraintTypes() []ast.TypeExpr {
+	var list []ast.TypeExpr
+	for {
+		typ := p.parseType()
+		if tn, ok := typ.(*ast.TypeName); ok && tn.Name == "எதுவும்" && tn.Pkg == nil && len(tn.TypeArgs) == 0 {
+			return nil // explicit any
+		}
+		list = append(list, typ)
+		if p.tok.Kind != token.OR {
+			break
+		}
+		p.next()
+	}
 	return list
 }
 
@@ -509,26 +566,49 @@ func (p *Parser) parseVarDecl(exported bool, exportPos token.Pos) *ast.VarDecl {
 	return &ast.VarDecl{TokPos: pos, Exported: exported, Names: names, Type: typ, Values: values}
 }
 
-// parseConstDecl parses மாறிலி names [ Type ] = values.
-func (p *Parser) parseConstDecl(exported bool, exportPos token.Pos) *ast.ConstDecl {
+// parseConstDecl parses மாறிலி names [ Type ] = values or மாறிலி ( spec { ";" spec } ).
+func (p *Parser) parseConstDecl(exported bool, exportPos token.Pos) ast.Decl {
 	pos := p.tok.Pos
 	if exported {
 		pos = exportPos
 	}
 	p.expect(token.CONST)
+	if p.tok.Kind == token.LPAREN {
+		p.next()
+		var specs []*ast.ConstSpec
+		for p.tok.Kind != token.RPAREN && p.tok.Kind != token.EOF {
+			p.skipSemis()
+			if p.tok.Kind == token.RPAREN || p.tok.Kind == token.EOF {
+				break
+			}
+			specs = append(specs, p.parseConstSpec())
+			p.skipSemis()
+		}
+		p.expect(token.RPAREN)
+		return &ast.ConstGroupDecl{TokPos: pos, Exported: exported, Specs: specs}
+	}
+	spec := p.parseConstSpec()
+	if len(spec.Values) == 0 {
+		p.errorExpected("மாறிலி requires = initializer")
+	}
+	return &ast.ConstDecl{
+		TokPos: pos, Exported: exported,
+		Names: spec.Names, Type: spec.Type, Values: spec.Values,
+	}
+}
+
+func (p *Parser) parseConstSpec() *ast.ConstSpec {
 	names := p.parseIdentList()
 	var typ ast.TypeExpr
-	// Optional type: present when next token is a type start and not "=".
-	if p.tok.Kind != token.ASSIGN {
+	if p.tok.Kind != token.ASSIGN && startsType(p.tok.Kind) {
 		typ = p.parseType()
 	}
-	if p.tok.Kind != token.ASSIGN {
-		p.errorExpected("மாறிலி requires = initializer")
-		return &ast.ConstDecl{TokPos: pos, Exported: exported, Names: names, Type: typ}
+	var values []ast.Expr
+	if p.tok.Kind == token.ASSIGN {
+		p.next()
+		values = p.parseExprList()
 	}
-	p.next()
-	values := p.parseExprList()
-	return &ast.ConstDecl{TokPos: pos, Exported: exported, Names: names, Type: typ, Values: values}
+	return &ast.ConstSpec{Names: names, Type: typ, Values: values}
 }
 
 func (p *Parser) parseIdentList() []*ast.Ident {
@@ -560,7 +640,11 @@ func (p *Parser) parseStmt() ast.Stmt {
 	case token.VAR:
 		return p.parseVarDecl(false, p.tok.Pos)
 	case token.CONST:
-		return p.parseConstDecl(false, p.tok.Pos)
+		d := p.parseConstDecl(false, p.tok.Pos)
+		if s, ok := d.(ast.Stmt); ok {
+			return s
+		}
+		return nil
 	case token.IF:
 		return p.parseIfStmt()
 	case token.SWITCH:
@@ -1184,17 +1268,37 @@ func (p *Parser) parsePrimarySuffix(x ast.Expr) ast.Expr {
 				}
 				p.skipNewlineSemi()
 				p.expect(token.RBRACK)
-				if p.tok.Kind != token.LPAREN {
-					p.errorExpected("type argument list must be followed by a call")
+				if p.tok.Kind == token.LPAREN {
+					call := p.parseCallOn(x, false)
+					call.TypeArgs = exprsToTypeArgs(elts)
+					x = call
 					continue
 				}
-				call := p.parseCallOn(x, false)
-				call.TypeArgs = exprsToTypeArgs(elts)
-				x = call
+				if p.tok.Kind == token.LBRACE && p.compositeOK {
+					if tn := exprToTypeName(x); tn != nil {
+						tn.TypeArgs = exprsToTypeArgs(elts)
+						x = p.parseCompositeLit(tn)
+						continue
+					}
+				}
+				p.errorExpected("type argument list must be followed by a call or composite literal")
 				continue
 			}
 			p.skipNewlineSemi()
 			rbrack := p.expect(token.RBRACK)
+			if p.tok.Kind == token.LPAREN {
+				call := p.parseCallOn(x, false)
+				call.TypeArgs = exprsToTypeArgs([]ast.Expr{first})
+				x = call
+				continue
+			}
+			if p.tok.Kind == token.LBRACE && p.compositeOK {
+				if tn := exprToTypeName(x); tn != nil {
+					tn.TypeArgs = exprsToTypeArgs([]ast.Expr{first})
+					x = p.parseCompositeLit(tn)
+					continue
+				}
+			}
 			x = &ast.IndexExpr{X: x, Lbrack: lbrack, Index: first, Rbrack: rbrack.Pos}
 		case token.PERIOD:
 			dot := p.tok.Pos
@@ -1416,14 +1520,30 @@ func (p *Parser) parseCall(fun *ast.Ident, builtin bool) *ast.CallExpr {
 func (p *Parser) parseCallOn(fun ast.Expr, builtin bool) *ast.CallExpr {
 	lparen := p.expect(token.LPAREN)
 	var args []ast.Expr
+	var ellipsis token.Pos
 	if builtin {
 		args = []ast.Expr{p.parseExpr()}
 	} else if p.tok.Kind != token.RPAREN && p.tok.Kind != token.SEMICOLON {
-		args = p.parseExprList()
+		args, ellipsis = p.parseCallExprList()
 	}
 	p.skipNewlineSemi()
 	rparen := p.expect(token.RPAREN)
-	return &ast.CallExpr{Fun: fun, Lparen: lparen.Pos, Args: args, Rparen: rparen.Pos, Builtin: builtin}
+	return &ast.CallExpr{Fun: fun, Lparen: lparen.Pos, Args: args, Ellipsis: ellipsis, Rparen: rparen.Pos, Builtin: builtin}
+}
+
+// parseCallExprList parses call arguments; the final argument may be followed by ...
+func (p *Parser) parseCallExprList() ([]ast.Expr, token.Pos) {
+	list := []ast.Expr{p.parseExpr()}
+	for p.tok.Kind == token.COMMA {
+		p.next()
+		list = append(list, p.parseExpr())
+	}
+	var ellipsis token.Pos
+	if p.tok.Kind == token.ELLIPSIS {
+		ellipsis = p.tok.Pos
+		p.next()
+	}
+	return list, ellipsis
 }
 
 // finishSlice parses the remainder of a slice expression after the first ":".
@@ -1460,6 +1580,19 @@ func (p *Parser) parseAppendCall(fun *ast.Ident) *ast.CallExpr {
 	p.skipNewlineSemi()
 	rparen := p.expect(token.RPAREN)
 	return &ast.CallExpr{Fun: fun, Lparen: lparen.Pos, Args: args, Rparen: rparen.Pos, Builtin: true}
+}
+
+// exprToTypeName extracts a TypeName from an identifier or selector (for T[T2]{…}).
+func exprToTypeName(e ast.Expr) *ast.TypeName {
+	switch e := e.(type) {
+	case *ast.Ident:
+		return &ast.TypeName{TokPos: e.NamePos, Name: e.Name}
+	case *ast.SelectorExpr:
+		if id, ok := e.X.(*ast.Ident); ok {
+			return &ast.TypeName{TokPos: id.NamePos, Pkg: id, Name: e.Sel.Name}
+		}
+	}
+	return nil
 }
 
 // exprsToTypeArgs converts index-list expressions into type expressions for f[T,U](…).

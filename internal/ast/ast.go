@@ -52,13 +52,21 @@ type Decl interface {
 	declNode()
 }
 
+// TypeParam is a type parameter with optional constraint types (Tamil-0.71).
+// Empty ConstraintTypes means unconstrained (any / எதுவும்).
+// Multiple entries form a union constraint (T | U | V).
+type TypeParam struct {
+	Name              *Ident
+	ConstraintTypes   []TypeExpr
+}
+
 // FuncDecl is a function or method declaration.
 type FuncDecl struct {
 	TokPos     token.Pos
 	Exported   bool // வெளி
 	Recv       *Field // optional method receiver
 	Name       *Ident
-	TypeParams []*Ident // unconstrained type parameters (Tamil-0.40); empty = non-generic
+	TypeParams []*TypeParam // generic type parameters (Tamil-0.40+)
 	Params     []*Field
 	Results    []*Field // empty = void; Name==nil → unnamed type; all named or all unnamed
 	Body       *BlockStmt
@@ -67,13 +75,14 @@ type FuncDecl struct {
 func (d *FuncDecl) Pos() token.Pos { return d.TokPos }
 func (d *FuncDecl) declNode()      {}
 
-// TypeDecl is வகை Name TypeLit | வகை Name = Type | வகை Name Type.
+// TypeDecl is வகை Name [TypeParams] TypeLit | வகை Name = Type | வகை Name Type.
 type TypeDecl struct {
-	TokPos   token.Pos
-	Exported bool // வெளி
-	Name     *Ident
-	Alias    bool     // true for வகை Name = Type
-	Type     TypeExpr // *StructType, or underlying/aliased type
+	TokPos     token.Pos
+	Exported   bool // வெளி
+	Name       *Ident
+	TypeParams []*TypeParam // Tamil-0.71 generic types
+	Alias      bool         // true for வகை Name = Type
+	Type       TypeExpr     // *StructType, or underlying/aliased type
 }
 
 func (d *TypeDecl) Pos() token.Pos { return d.TokPos }
@@ -102,11 +111,12 @@ type TypeExpr interface {
 	typeExpr()
 }
 
-// TypeName is முழுஎண், நிலை, சரம், Name, or Pkg.Name.
+// TypeName is முழுஎண், நிலை, சரம், Name, Pkg.Name, or Name[T, …].
 type TypeName struct {
-	TokPos token.Pos
-	Pkg    *Ident // optional package qualifier
-	Name   string
+	TokPos   token.Pos
+	Pkg      *Ident // optional package qualifier
+	Name     string
+	TypeArgs []TypeExpr // generic instantiation (Tamil-0.71)
 }
 
 func (t *TypeName) Pos() token.Pos { return t.TokPos }
@@ -267,6 +277,13 @@ func (d *VarDecl) Pos() token.Pos { return d.TokPos }
 func (d *VarDecl) declNode()      {}
 func (d *VarDecl) stmtNode()      {}
 
+// ConstSpec is one name list with optional type and values inside a const group.
+type ConstSpec struct {
+	Names  []*Ident
+	Type   TypeExpr // optional; may inherit from previous spec in a group
+	Values []Expr   // optional in groups (reuses previous spec's expressions)
+}
+
 // ConstDecl is மாறிலி names [ Type ] = values (Tamil-0.67).
 // Type may be nil when inferred from Values.
 type ConstDecl struct {
@@ -280,6 +297,17 @@ type ConstDecl struct {
 func (d *ConstDecl) Pos() token.Pos { return d.TokPos }
 func (d *ConstDecl) declNode()      {}
 func (d *ConstDecl) stmtNode()      {}
+
+// ConstGroupDecl is மாறிலி ( spec { ";" spec } ) (Tamil-0.68).
+type ConstGroupDecl struct {
+	TokPos   token.Pos
+	Exported bool
+	Specs    []*ConstSpec
+}
+
+func (d *ConstGroupDecl) Pos() token.Pos { return d.TokPos }
+func (d *ConstGroupDecl) declNode()      {}
+func (d *ConstGroupDecl) stmtNode()      {}
 
 // Stmt is a statement.
 type Stmt interface {
@@ -551,6 +579,7 @@ type CallExpr struct {
 	TypeArg    TypeExpr   // ஆக்கு([]T, …): type is first argument
 	TypeArgs   []TypeExpr // f[T,U](…) generic instantiation (Tamil-0.41)
 	Args       []Expr
+	Ellipsis   token.Pos // final arg is slice... (Tamil-0.69)
 	Rparen     token.Pos
 	Builtin    bool // true for பதிப்பி / நீளம் / ஆக்கு / …
 	Conversion bool // true for T(x) type conversion

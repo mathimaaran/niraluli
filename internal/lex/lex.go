@@ -338,6 +338,9 @@ func (l *Lexer) Next() token.Token {
 		case '&':
 			l.next()
 			return l.finish(token.Token{Kind: token.AND, Lit: "&", Pos: start})
+		case '|':
+			l.next()
+			return l.finish(token.Token{Kind: token.OR, Lit: "|", Pos: start})
 		case '%':
 			l.next()
 			return l.finish(token.Token{Kind: token.REM, Lit: "%", Pos: start})

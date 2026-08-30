@@ -527,16 +527,45 @@ precision, `%d`/`%g`, and writer Printf wait on richer typing or later slices.
 **Variadic parameters** use Go punctuation `...T` on the final parameter of
 functions, methods, function literals, and function types. Inside the body the
 name has type `[]T`. Call sites may pass zero or more trailing `T` values; the
-emitter packs them into a temporary slice. `slice...` expand is deferred.
-`வடிவம்.வடிவமை` now takes `...சரம்` (removed fixed-arity `வடிவமை1`/`2`/`3`).
+emitter packs them into a temporary slice. Tamil-0.69 adds `slice...` expansion
+at call sites. `வடிவம்.வடிவமை` now takes `...சரம்` (removed fixed-arity `வடிவமை1`/`2`/`3`).
 
 ## Tamil-0.67 (2026-08-23)
 
 **Compile-time constants** use keyword `மாறிலி` (not `நிலை`, which remains
 the bool type). Package- and block-level consts of scalar types with constant
-expressions; `வெளி` exports package consts. No `iota` or parenthesized const
-groups yet. Values are folded and inlined by the C emitter.
+expressions; `வெளி` exports package consts. Values are folded and inlined by the C emitter.
 See `constructs/const.yaml` and `corpus/tamil/மாறிலி.uli`.
+
+## Tamil-0.68 (2026-08-29)
+
+**Const groups and iota:** parenthesized `மாறிலி ( … )` with multiple specs;
+predeclared `iota` (ASCII, Go-style) increments per spec; omitted RHS and type
+repeat the previous spec. See `corpus/tamil/மாறிலி_iota.uli`.
+
+## Tamil-0.69 (2026-08-29)
+
+**Slice expansion at variadic calls:** the final call argument may be `expr...`
+where `expr` has type `[]T` and the callee takes `...T`. The slice is passed
+directly as the variadic parameter value. See updated `corpus/tamil/பலவாதங்கள்.uli`.
+
+## Tamil-0.70 (2026-08-30)
+
+**Package-level variables:** top-level `மாறி` with optional `= init` and
+optional `வெளி` export. Zero-init when no initializer; runtime init hook for
+explicit values. See `corpus/tamil/மாறி_தொகுப்பு.uli`.
+
+## Tamil-0.71 (2026-08-30)
+
+**Generic types and constraints:** `வகை Name[யா]` struct/defined types with
+`Name[T]` instantiation; union constraints `T | U`; predeclared `எதுவும்` (any).
+Function constraints use the same syntax. See `corpus/tamil/பொதுவகை_வகை.uli`.
+
+## Tamil-0.72 (2026-08-30)
+
+**Generic methods:** methods on generic types with receivers that use the
+type's type parameters (`(b பெட்டி[யா])`), not method-level `[T]`. Each
+instantiation monomorphizes method bodies. See `corpus/tamil/பொதுவகை_முறை.uli`.
 
 ## Priority (2026-08-01)
 

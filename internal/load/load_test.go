@@ -559,7 +559,7 @@ func TestVariadicProgram(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
 	}
-	want := "0\n6\n30\n"
+	want := "0\n6\n30\n15\n"
 	if string(got) != want {
 		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
 	}
@@ -604,6 +604,185 @@ func TestConstProgram(t *testing.T) {
 		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
 	}
 	want := "20\nவணக்கம்\n1\n2\nமெய்\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
+	}
+}
+
+func TestConstIotaProgram(t *testing.T) {
+	path := filepath.Join(root(t), "corpus", "tamil", "மாறிலி_iota.uli")
+	prog, lerrs := load.LoadProgram([]string{path})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	want := "0\n1\n4\n0\n10\n20\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
+	}
+}
+
+func TestPkgVarProgram(t *testing.T) {
+	path := filepath.Join(root(t), "corpus", "tamil", "மாறி_தொகுப்பு.uli")
+	prog, lerrs := load.LoadProgram([]string{path})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	want := "42\n1\nநிரலுளி\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
+	}
+}
+
+func TestGenericTypeProgram(t *testing.T) {
+	path := filepath.Join(root(t), "corpus", "tamil", "பொதுவகை_வகை.uli")
+	prog, lerrs := load.LoadProgram([]string{path})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	want := "42\nநிரலுளி\n7\n"
+	if string(got) != want {
+		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
+	}
+}
+
+func TestGenericMethodProgram(t *testing.T) {
+	path := filepath.Join(root(t), "corpus", "tamil", "பொதுவகை_முறை.uli")
+	prog, lerrs := load.LoadProgram([]string{path})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		for _, e := range errs {
+			t.Log(e)
+		}
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s\nC:\n%s", err, got, cSrc)
+	}
+	want := "7\n42\nநிரலுளி\n"
 	if string(got) != want {
 		t.Fatalf("got %q want %q\nC:\n%s", got, want, cSrc)
 	}

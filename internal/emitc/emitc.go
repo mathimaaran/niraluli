@@ -67,6 +67,9 @@ func EmitProgram(pi *check.ProgramInfo) (string, error) {
 	if info.CallInst == nil {
 		info.CallInst = map[*ast.CallExpr]*check.MonoInst{}
 	}
+	if info.GenericMethodTemplates == nil {
+		info.GenericMethodTemplates = map[*ast.FuncDecl]bool{}
+	}
 	entry := pi.Entry
 	if entry == "" {
 		entry = "தொடக்கம்"
@@ -101,6 +104,7 @@ type emitter struct {
 	needFile      bool // கோப்பு file I/O (Tamil-0.63)
 	needTime      bool // நேரம் wall clock + duration (Tamil-0.64)
 	needFmt       bool // வடிவம் fmt-style formatting (Tamil-0.65)
+	needPkgVarInit bool // package-level மாறி with runtime initializers
 	needArena     bool
 	needUTF8      bool
 	needRuneStr   bool // சரம்(rune) conversion helper
@@ -150,7 +154,13 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 		for _, d := range p.File.Decls {
 			if fn, ok := d.(*ast.FuncDecl); ok {
 				if len(fn.TypeParams) > 0 {
-					continue // templates are monomorphized below
+					continue
+				}
+				if e.info != nil && e.info.GenericMethodTemplates[fn] {
+					continue
+				}
+				if fn.Name != nil && fn.Name.Name == "தொடக்கம்" && fn.Recv == nil {
+					continue
 				}
 				e.writeFunc(&body, fn)
 				body.WriteString("\n")
@@ -162,6 +172,32 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 			e.pkg = inst.Pkg
 			e.writeMonoFunc(&body, inst)
 			body.WriteString("\n")
+		}
+		for _, t := range sortedStructTypes(e.info) {
+			si := e.info.Structs[t]
+			if si.Schematic {
+				continue
+			}
+			for _, mi := range sortedStructMethods(si) {
+				if mi.Decl == nil || !e.info.GenericMethodTemplates[mi.Decl] {
+					continue
+				}
+				e.pkg = si.Pkg
+				e.writeMonoMethod(&body, si, mi)
+				body.WriteString("\n")
+			}
+		}
+	}
+	for _, p := range pkgs {
+		e.pkg = p.Name
+		e.importLocal = p.ImportLocal
+		for _, d := range p.File.Decls {
+			if fn, ok := d.(*ast.FuncDecl); ok {
+				if fn.Name != nil && fn.Name.Name == "தொடக்கம்" && fn.Recv == nil {
+					e.writeFunc(&body, fn)
+					body.WriteString("\n")
+				}
+			}
 		}
 	}
 
@@ -497,17 +533,26 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 				e.writeStructForwards(&b)
 			}
 			for _, t := range topoStructTypes(e.info) {
+				if e.info.Structs[t].Schematic {
+					continue
+				}
 				e.writeStructBody(&b, t)
 			}
 			b.WriteByte('\n')
 			e.structsDone = true
 		}
 		for _, t := range topoStructTypes(e.info) {
+			if e.info.Structs[t].Schematic {
+				continue
+			}
 			if e.structComparable(t) {
 				e.writeStructEqFn(&b, t)
 			}
 		}
 		for _, t := range topoStructTypes(e.info) {
+			if e.info.Structs[t].Schematic {
+				continue
+			}
 			e.writeStructPrintFn(&b, t)
 		}
 	}
@@ -531,6 +576,9 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 				if len(fn.TypeParams) > 0 {
 					continue
 				}
+				if e.info != nil && e.info.GenericMethodTemplates[fn] {
+					continue
+				}
 				b.WriteString(e.cFuncSig(fn))
 				b.WriteString(";\n")
 			}
@@ -542,8 +590,37 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 			b.WriteString(e.cMonoFuncSig(inst))
 			b.WriteString(";\n")
 		}
+		for _, t := range sortedStructTypes(e.info) {
+			si := e.info.Structs[t]
+			if si.Schematic {
+				continue
+			}
+			for _, mi := range sortedStructMethods(si) {
+				if mi.Decl == nil || !e.info.GenericMethodTemplates[mi.Decl] {
+					continue
+				}
+				e.pkg = si.Pkg
+				prevSubst := e.typeSubst
+				prevName := e.monoName
+				e.typeSubst = map[string]check.Type{}
+				for i, name := range si.GenericParamNames {
+					if i < len(si.GenericTypeArgs) {
+						e.typeSubst[name] = si.GenericTypeArgs[i]
+					}
+				}
+				e.monoName = cPkgIdent(si.Pkg, si.Name+"_"+mi.Name)
+				b.WriteString(e.cFuncSig(mi.Decl))
+				b.WriteString(";\n")
+				e.typeSubst = prevSubst
+				e.monoName = prevName
+			}
+		}
 	}
 	b.WriteByte('\n')
+	e.writePkgVarGlobals(&b, pkgs)
+	if e.needPkgVarInit {
+		e.writePkgVarInitFuncs(&b, pkgs)
+	}
 	if e.needDefer {
 		// Thunks after forwards so they can call user functions.
 		b.WriteString(e.deferThunks.String())
@@ -559,6 +636,13 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	if e.needArena {
 		b.WriteString("\tuli_heap_init();\n")
 	}
+	for _, p := range pkgs {
+		if e.pkgVarInitNeeded(p) {
+			b.WriteString("\t")
+			b.WriteString(cPkgIdent(p.Name, "__init_vars"))
+			b.WriteString("();\n")
+		}
+	}
 	b.WriteString("\t")
 	b.WriteString(cPkgIdent(e.entry, "தொடக்கம்"))
 	b.WriteString("();\n")
@@ -571,6 +655,78 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	b.WriteString("\treturn 0;\n")
 	b.WriteString("}\n")
 	return b.String(), nil
+}
+
+func (e *emitter) pkgVarInitNeeded(p *check.PkgInfo) bool {
+	if p == nil || p.File == nil {
+		return false
+	}
+	for _, d := range p.File.Decls {
+		if vd, ok := d.(*ast.VarDecl); ok && len(vd.Values) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *emitter) writePkgVarGlobals(b *strings.Builder, pkgs []*check.PkgInfo) {
+	for _, p := range pkgs {
+		e.pkg = p.Name
+		e.importLocal = p.ImportLocal
+		for _, d := range p.File.Decls {
+			vd, ok := d.(*ast.VarDecl)
+			if !ok {
+				continue
+			}
+			if usesSliceType(vd.Type) {
+				e.needSlice = true
+			}
+			if len(vd.Values) > 0 {
+				e.needPkgVarInit = true
+			}
+			for _, name := range vd.Names {
+				b.WriteString(e.cTypeExpr(vd.Type))
+				b.WriteByte(' ')
+				b.WriteString(cPkgIdent(p.Name, name.Name))
+				b.WriteString(" = ")
+				b.WriteString(e.zeroInit(vd.Type))
+				b.WriteString(";\n")
+			}
+		}
+	}
+	if e.needPkgVarInit {
+		b.WriteByte('\n')
+	}
+}
+
+func (e *emitter) writePkgVarInitFuncs(b *strings.Builder, pkgs []*check.PkgInfo) {
+	for _, p := range pkgs {
+		if !e.pkgVarInitNeeded(p) {
+			continue
+		}
+		e.pkg = p.Name
+		e.importLocal = p.ImportLocal
+		b.WriteString("static void ")
+		b.WriteString(cPkgIdent(p.Name, "__init_vars"))
+		b.WriteString("(void) {\n")
+		for _, d := range p.File.Decls {
+			vd, ok := d.(*ast.VarDecl)
+			if !ok {
+				continue
+			}
+			for i, name := range vd.Names {
+				if i >= len(vd.Values) {
+					continue
+				}
+				b.WriteString("\t")
+				b.WriteString(cPkgIdent(p.Name, name.Name))
+				b.WriteString(" = ")
+				e.writeExpr(b, vd.Values[i])
+				b.WriteString(";\n")
+			}
+		}
+		b.WriteString("}\n\n")
+	}
 }
 
 func cPkgIdent(pkg, name string) string {
@@ -593,6 +749,28 @@ func sortedStructTypes(info *check.Info) []check.Type {
 		}
 	}
 	return types
+}
+
+func sortedStructMethods(si *check.StructInfo) []*check.MethodInfo {
+	if si == nil || si.Methods == nil {
+		return nil
+	}
+	names := make([]string, 0, len(si.Methods))
+	for name := range si.Methods {
+		names = append(names, name)
+	}
+	for i := 0; i < len(names); i++ {
+		for j := i + 1; j < len(names); j++ {
+			if names[j] < names[i] {
+				names[i], names[j] = names[j], names[i]
+			}
+		}
+	}
+	out := make([]*check.MethodInfo, 0, len(names))
+	for _, name := range names {
+		out = append(out, si.Methods[name])
+	}
+	return out
 }
 
 func isSliceType(t check.Type) bool {
@@ -728,6 +906,9 @@ func (e *emitter) writeStructForwards(b *strings.Builder) {
 	}
 	for _, t := range sortedStructTypes(e.info) {
 		si := e.info.Structs[t]
+		if si.Schematic {
+			continue
+		}
 		name := cPkgIdent(si.Pkg, si.Name)
 		b.WriteString("typedef struct ")
 		b.WriteString(name)
@@ -759,7 +940,10 @@ func (e *emitter) writeStructBody(b *strings.Builder, t check.Type) {
 func (e *emitter) writeStructsAndNestedSlices(b *strings.Builder) {
 	pendingStructs := map[check.Type]bool{}
 	if e.info != nil {
-		for t := range e.info.Structs {
+		for t, si := range e.info.Structs {
+			if si.Schematic {
+				continue
+			}
 			pendingStructs[t] = true
 		}
 	}
@@ -1344,6 +1528,11 @@ func (e *emitter) cTypeExpr(te ast.TypeExpr) string {
 	}
 	switch te := te.(type) {
 	case *ast.TypeName:
+		if len(te.TypeArgs) > 0 {
+			if t, ok := e.lookupInstantiatedType(te); ok {
+				return e.cTypeFrom(t)
+			}
+		}
 		if e.typeSubst != nil {
 			if t, ok := e.typeSubst[te.Name]; ok {
 				return e.cTypeFrom(t)
@@ -1399,6 +1588,11 @@ func (e *emitter) resolveTypeExpr(te ast.TypeExpr) check.Type {
 	}
 	switch te := te.(type) {
 	case *ast.TypeName:
+		if len(te.TypeArgs) > 0 {
+			if t, ok := e.lookupInstantiatedType(te); ok {
+				return t
+			}
+		}
 		if e.typeSubst != nil {
 			if t, ok := e.typeSubst[te.Name]; ok {
 				return t
@@ -1639,7 +1833,69 @@ func (e *emitter) realPkg(local string) string {
 	return local
 }
 
+func (e *emitter) lookupInstantiatedType(te *ast.TypeName) (check.Type, bool) {
+	if te == nil || len(te.TypeArgs) == 0 {
+		return check.TypeInvalid, false
+	}
+	pkg := e.pkg
+	if te.Pkg != nil {
+		pkg = e.realPkg(te.Pkg.Name)
+	}
+	key := te.Name
+	for _, ta := range te.TypeArgs {
+		t := e.resolveTypeExpr(ta)
+		key += "__" + e.typeStr(t)
+	}
+	if pkg != "" {
+		if t, ok := e.info.TypeByName[pkg+"."+key]; ok {
+			return t, true
+		}
+	}
+	return check.TypeInvalid, false
+}
+
+func (e *emitter) typeStr(t check.Type) string {
+	if e.info == nil {
+		return "?"
+	}
+	if si, ok := e.info.Structs[t]; ok {
+		return si.Name
+	}
+	if di, ok := e.info.Defined[t]; ok {
+		return di.Name
+	}
+	switch t {
+	case check.TypeInt:
+		return "முழுஎண்"
+	case check.TypeBool:
+		return "நிலை"
+	case check.TypeString:
+		return "சரம்"
+	case check.TypeFloat:
+		return "மிதவைஎண்"
+	case check.TypeByte:
+		return "இருமி8"
+	case check.TypeRune:
+		return "இருமி32"
+	default:
+		if check.IsSlice(t) {
+			return "[]" + e.typeStr(check.ElemOfSlice(e.info, t))
+		}
+		if check.IsArray(t) {
+			ai := e.info.Arrays[t]
+			return fmt.Sprintf("[%d]%s", ai.Len, e.typeStr(ai.Elem))
+		}
+		return fmt.Sprintf("t%d", int(t))
+	}
+}
+
 func (e *emitter) lookupNamed(te *ast.TypeName) (check.Type, bool) {
+	if te == nil {
+		return check.TypeInvalid, false
+	}
+	if len(te.TypeArgs) > 0 {
+		return e.lookupInstantiatedType(te)
+	}
 	if te.Pkg != nil {
 		t, ok := e.info.TypeByName[e.realPkg(te.Pkg.Name)+"."+te.Name]
 		return t, ok
@@ -2183,8 +2439,8 @@ func (e *emitter) cMonoFuncSig(inst *check.MonoInst) string {
 	prevName := e.monoName
 	e.typeSubst = map[string]check.Type{}
 	for i, name := range inst.Decl.TypeParams {
-		if i < len(inst.TypeArgs) && name != nil {
-			e.typeSubst[name.Name] = inst.TypeArgs[i]
+		if i < len(inst.TypeArgs) && name != nil && name.Name != nil {
+			e.typeSubst[name.Name.Name] = inst.TypeArgs[i]
 		}
 	}
 	e.monoName = e.monoCName(inst)
@@ -2202,12 +2458,30 @@ func (e *emitter) writeMonoFunc(b *strings.Builder, inst *check.MonoInst) {
 	prevName := e.monoName
 	e.typeSubst = map[string]check.Type{}
 	for i, name := range inst.Decl.TypeParams {
-		if i < len(inst.TypeArgs) && name != nil {
-			e.typeSubst[name.Name] = inst.TypeArgs[i]
+		if i < len(inst.TypeArgs) && name != nil && name.Name != nil {
+			e.typeSubst[name.Name.Name] = inst.TypeArgs[i]
 		}
 	}
 	e.monoName = e.monoCName(inst)
 	e.writeFunc(b, inst.Decl)
+	e.typeSubst = prevSubst
+	e.monoName = prevName
+}
+
+func (e *emitter) writeMonoMethod(b *strings.Builder, si *check.StructInfo, mi *check.MethodInfo) {
+	if si == nil || mi == nil || mi.Decl == nil {
+		return
+	}
+	prevSubst := e.typeSubst
+	prevName := e.monoName
+	e.typeSubst = map[string]check.Type{}
+	for i, name := range si.GenericParamNames {
+		if i < len(si.GenericTypeArgs) {
+			e.typeSubst[name] = si.GenericTypeArgs[i]
+		}
+	}
+	e.monoName = cPkgIdent(si.Pkg, si.Name+"_"+mi.Name)
+	e.writeFunc(b, mi.Decl)
 	e.typeSubst = prevSubst
 	e.monoName = prevName
 }
@@ -2322,6 +2596,10 @@ func (e *emitter) writeCallArgs(b *strings.Builder, call *ast.CallExpr) {
 	}
 	if pack.Fixed > 0 {
 		b.WriteString(", ")
+	}
+	if pack.Expand {
+		e.writeExpr(b, call.Args[len(call.Args)-1])
+		return
 	}
 	e.writeVariadicSlice(b, call.Args[pack.Fixed:], pack)
 }
@@ -3202,6 +3480,8 @@ func (e *emitter) writeStmt(b *strings.Builder, s ast.Stmt, level int) {
 	case *ast.ConstDecl:
 		// Compile-time constants are inlined at use sites (Tamil-0.67).
 		return
+	case *ast.ConstGroupDecl:
+		return
 	case *ast.VarDecl:
 		if usesSliceType(s.Type) {
 			e.needSlice = true
@@ -3971,6 +4251,10 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 			}
 		}
 		if e.info != nil {
+			if vv := e.info.PkgVarValues[expr]; vv != nil {
+				b.WriteString(cPkgIdent(vv.Pkg, vv.Name))
+				return
+			}
 			if fv := e.info.PkgFuncValues[expr]; fv != nil {
 				e.writePkgFuncValue(b, fv)
 				return
@@ -4182,6 +4466,10 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 		e.writeSliceExpr(b, expr)
 	case *ast.SelectorExpr:
 		if e.info != nil {
+			if vv := e.info.PkgVarValues[expr]; vv != nil {
+				b.WriteString(cPkgIdent(vv.Pkg, vv.Name))
+				return
+			}
 			if me := e.info.MethodExprs[expr]; me != nil {
 				e.writeMethodExpr(b, me)
 				return

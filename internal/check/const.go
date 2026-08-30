@@ -108,11 +108,12 @@ func (c *Checker) collectPackageConsts(f *ast.File) {
 		c.cur.consts = map[string]*pkgConst{}
 	}
 	for _, d := range f.Decls {
-		cd, ok := d.(*ast.ConstDecl)
-		if !ok {
-			continue
+		switch d := d.(type) {
+		case *ast.ConstDecl:
+			c.defineConstDecl(d, true)
+		case *ast.ConstGroupDecl:
+			c.defineConstGroup(d, true)
 		}
-		c.defineConstDecl(cd, true)
 	}
 }
 
@@ -120,62 +121,111 @@ func (c *Checker) checkConstDecl(d *ast.ConstDecl) {
 	c.defineConstDecl(d, false)
 }
 
+func (c *Checker) checkConstGroup(d *ast.ConstGroupDecl) {
+	c.defineConstGroup(d, false)
+}
+
 func (c *Checker) defineConstDecl(d *ast.ConstDecl, pkgLevel bool) {
 	if d == nil {
 		return
 	}
-	if len(d.Values) != len(d.Names) {
-		c.error(d.Pos(), "wrong number of constant initializers")
+	c.defineConstSpecs([]*ast.ConstSpec{{
+		Names: d.Names, Type: d.Type, Values: d.Values,
+	}}, d.Exported, pkgLevel, true)
+}
+
+func (c *Checker) defineConstGroup(d *ast.ConstGroupDecl, pkgLevel bool) {
+	if d == nil {
 		return
 	}
-	var want Type
-	if d.Type != nil {
-		want = c.typeFromExpr(d.Type)
-		if want == TypeInvalid {
-			c.error(d.Type.Pos(), "invalid constant type")
-			return
-		}
-		if !c.isConstAllowedType(want) {
-			c.error(d.Type.Pos(), "constant type must be a scalar (முழுஎண், மிதவைஎண், நிலை, சரம், இருமி8, இருமி32)")
-			return
-		}
-	}
-	for i, name := range d.Names {
-		if name == nil {
+	c.defineConstSpecs(d.Specs, d.Exported, pkgLevel, false)
+}
+
+func (c *Checker) defineConstSpecs(specs []*ast.ConstSpec, exported, pkgLevel, requireValues bool) {
+	var prevType ast.TypeExpr
+	var prevValues []ast.Expr
+	for iotaVal, spec := range specs {
+		if spec == nil || len(spec.Names) == 0 {
 			continue
 		}
-		v, vt, ok := c.evalConst(d.Values[i])
-		if !ok {
-			c.error(d.Values[i].Pos(), "constant initializer must be a constant expression")
-			continue
-		}
-		t := want
-		if t == TypeInvalid {
-			t = vt
-		} else if !c.constAssignable(v, vt, t) {
-			c.error(d.Values[i].Pos(), "cannot initialize constant %s as %s", c.typStr(t), c.typStr(vt))
-			continue
+		typExpr := spec.Type
+		if typExpr == nil {
+			typExpr = prevType
 		} else {
-			v = c.coerceConst(v, t)
+			prevType = typExpr
 		}
-		c.recordConstExpr(d.Values[i], v)
-		if pkgLevel {
-			if _, exists := c.cur.consts[name.Name]; exists {
-				c.error(name.Pos(), "constant redeclared: %s", name.Name)
-				continue
-			}
-			if _, exists := c.cur.funcs[name.Name]; exists {
-				c.error(name.Pos(), "already declared: %s", name.Name)
-				continue
-			}
-			if _, exists := c.cur.types[name.Name]; exists {
-				c.error(name.Pos(), "already declared: %s", name.Name)
-				continue
-			}
-			c.cur.consts[name.Name] = &pkgConst{typ: t, val: v, exported: d.Exported}
-		} else {
-			c.scope.declareConst(name.Name, t, v, name.Pos(), &c.errs)
+		values := spec.Values
+		if len(values) == 0 {
+			values = prevValues
 		}
+		if len(values) == 0 {
+			if requireValues || iotaVal == 0 {
+				c.error(spec.Names[0].Pos(), "missing constant initializer")
+			} else {
+				c.error(spec.Names[0].Pos(), "missing constant initializer (no previous expression to repeat)")
+			}
+			continue
+		}
+		prevValues = values
+		if len(values) != len(spec.Names) {
+			c.error(spec.Names[0].Pos(), "wrong number of constant initializers")
+			continue
+		}
+		var want Type
+		if typExpr != nil {
+			want = c.typeFromExpr(typExpr)
+			if want == TypeInvalid {
+				c.error(typExpr.Pos(), "invalid constant type")
+				continue
+			}
+			if !c.isConstAllowedType(want) {
+				c.error(typExpr.Pos(), "constant type must be a scalar (முழுஎண், மிதவைஎண், நிலை, சரம், இருமி8, இருமி32)")
+				continue
+			}
+		}
+		prevIota := c.constIota
+		prevActive := c.constIotaActive
+		c.constIota = int64(iotaVal)
+		c.constIotaActive = true
+		for i, name := range spec.Names {
+			if name == nil {
+				continue
+			}
+			v, vt, ok := c.evalConst(values[i])
+			if !ok {
+				c.error(values[i].Pos(), "constant initializer must be a constant expression")
+				continue
+			}
+			t := want
+			if t == TypeInvalid {
+				t = vt
+			} else if !c.constAssignable(v, vt, t) {
+				c.error(values[i].Pos(), "cannot initialize constant %s as %s", c.typStr(t), c.typStr(vt))
+				continue
+			} else {
+				v = c.coerceConst(v, t)
+			}
+			c.recordConstExpr(values[i], v)
+			if pkgLevel {
+				if _, exists := c.cur.consts[name.Name]; exists {
+					c.error(name.Pos(), "constant redeclared: %s", name.Name)
+					continue
+				}
+				if _, exists := c.cur.funcs[name.Name]; exists {
+					c.error(name.Pos(), "already declared: %s", name.Name)
+					continue
+				}
+				if _, exists := c.cur.types[name.Name]; exists {
+					c.error(name.Pos(), "already declared: %s", name.Name)
+					continue
+				}
+				c.cur.consts[name.Name] = &pkgConst{typ: t, val: v, exported: exported}
+			} else {
+				c.scope.declareConst(name.Name, t, v, name.Pos(), &c.errs)
+			}
+		}
+		c.constIota = prevIota
+		c.constIotaActive = prevActive
 	}
 }
 
@@ -266,6 +316,11 @@ func (c *Checker) evalConst(e ast.Expr) (ConstValue, Type, bool) {
 		}
 		return v, t, ok
 	case *ast.Ident:
+		if e.Name == "iota" && c.constIotaActive {
+			v := ConstValue{Kind: ConstInt, Int: c.constIota}
+			c.recordConstExpr(e, v)
+			return v, TypeInt, true
+		}
 		if v, t, ok := c.constOfIdent(e.Name); ok {
 			c.recordConstExpr(e, v)
 			return v, t, true

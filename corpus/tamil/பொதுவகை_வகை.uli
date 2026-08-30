@@ -1,0 +1,38 @@
+// Tamil-0.71: generic types and constraints.
+// Go equivalent:
+//
+//	package main
+//
+//	import "fmt"
+//
+//	type Box[T any] struct { val T }
+//
+//	type NumOrText[T int | string] struct { x T }
+//
+//	func main() {
+//		a := Box[int]{val: 42}
+//		b := Box[string]{val: "நிரலுளி"}
+//		fmt.Println(a.val)
+//		fmt.Println(b.val)
+//		n := NumOrText[int]{x: 7}
+//		fmt.Println(n.x)
+//	}
+
+தொகுப்பு தொடக்கம்
+
+வகை பெட்டி[யா] அமைப்பு {
+    val யா
+}
+
+வகை எண்அல்லது[டி முழுஎண் | சரம்] அமைப்பு {
+    x டி
+}
+
+செயல்பாடு தொடக்கம்() {
+    a := பெட்டி[முழுஎண்]{val: 42}
+    b := பெட்டி[சரம்]{val: "நிரலுளி"}
+    பதிப்பி(a.val)
+    பதிப்பி(b.val)
+    n := எண்அல்லது[முழுஎண்]{x: 7}
+    பதிப்பி(n.x)
+}
