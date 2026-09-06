@@ -14,15 +14,14 @@ GO_URL="https://go.dev/dl/${GO_TARBALL}"
 
 DIST="$ROOT/dist"
 STAGE="$DIST/stage/niraluli-${VERSION}"
-RPM_TOP="$DIST/rpmbuild"
+BUILDROOT="$DIST/rpm-buildroot"
 ZIP_NAME="niraluli-${VERSION}-source.zip"
-TAR_NAME="niraluli-${VERSION}.tar.gz"
 RPM_NAME="niraluli-${VERSION}-${RELEASE}.x86_64.rpm"
 
 echo "==> Niraluli ${VERSION} release packaging"
 
-rm -rf "$DIST/stage" "$RPM_TOP"
-mkdir -p "$STAGE" "$DIST" "$RPM_TOP"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+rm -rf "$DIST/stage" "$BUILDROOT"
+mkdir -p "$STAGE" "$DIST"
 
 # --- Portable Go -----------------------------------------------------------
 ensure_go() {
@@ -45,6 +44,8 @@ ensure_go() {
 }
 
 ensure_go
+export PATH="$ROOT/.tools/go/bin:$PATH"
+export GOROOT="$ROOT/.tools/go"
 
 # --- Clean source tree via git archive -------------------------------------
 echo "==> staging source tree"
@@ -66,40 +67,62 @@ rm -f "$DIST/$ZIP_NAME"
   zip -qr "$DIST/$ZIP_NAME" "niraluli-${VERSION}"
 )
 
-# --- Tarball for rpmbuild --------------------------------------------------
-echo "==> writing $RPM_TOP/SOURCES/$TAR_NAME"
-tar -C "$DIST/stage" -czf "$RPM_TOP/SOURCES/$TAR_NAME" "niraluli-${VERSION}"
-cp "$ROOT/packaging/niraluli.spec" "$RPM_TOP/SPECS/niraluli.spec"
+# --- Build uli into the staged tree ----------------------------------------
+echo "==> building bin/uli"
+mkdir -p "$STAGE/bin"
+(
+  cd "$STAGE"
+  export PATH="$STAGE/.tools/go/bin:$PATH"
+  export GOROOT="$STAGE/.tools/go"
+  go build -o bin/uli ./cmd/uli
+)
 
-# Patch Version/Release in a copy if env overrides differ from the checked-in spec
-sed -i \
-  -e "s/^Version:.*/Version:        ${VERSION}/" \
-  -e "s/^Release:.*/Release:        ${RELEASE}%{?dist}/" \
-  "$RPM_TOP/SPECS/niraluli.spec"
+# --- RPM buildroot ---------------------------------------------------------
+echo "==> assembling RPM buildroot"
+mkdir -p "$BUILDROOT/opt" "$BUILDROOT/usr/bin"
+cp -a "$STAGE" "$BUILDROOT/opt/niraluli"
+install -m 755 "$ROOT/packaging/uli.wrapper" "$BUILDROOT/usr/bin/uli"
 
-# --- rpmbuild --------------------------------------------------------------
-if ! command -v rpmbuild >/dev/null 2>&1; then
-  echo "rpmbuild not found; attempting: sudo apt-get install -y rpm"
-  sudo apt-get install -y rpm
+SUMMARY="Niraluli programming language with bundled Go toolchain"
+DESCRIPTION="Niraluli (நிரலுளி) is a Go-inspired programming language with semantic Tamil keywords and a C/Linux backend. This package installs the compiler tree, stdlib, docs, corpus samples, a portable Go 1.22 toolchain, and a prebuilt /opt/niraluli/bin/uli under /opt/niraluli. A C compiler (gcc or clang) is still required for uli run / uli build."
+
+if command -v rpmbuild >/dev/null 2>&1; then
+  echo "==> rpmbuild available; using packaging/niraluli.spec"
+  RPM_TOP="$DIST/rpmbuild"
+  rm -rf "$RPM_TOP"
+  mkdir -p "$RPM_TOP"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+  tar -C "$DIST/stage" -czf "$RPM_TOP/SOURCES/niraluli-${VERSION}.tar.gz" "niraluli-${VERSION}"
+  cp "$ROOT/packaging/niraluli.spec" "$RPM_TOP/SPECS/niraluli.spec"
+  sed -i \
+    -e "s/^Version:.*/Version:        ${VERSION}/" \
+    -e "s/^Release:.*/Release:        ${RELEASE}%{?dist}/" \
+    "$RPM_TOP/SPECS/niraluli.spec"
+  rpmbuild -bb \
+    --define "_topdir ${RPM_TOP}" \
+    --define "debug_package %{nil}" \
+    "$RPM_TOP/SPECS/niraluli.spec"
+  shopt -s nullglob
+  built=( "$RPM_TOP"/RPMS/x86_64/niraluli-"${VERSION}"-*.x86_64.rpm )
+  if [[ ${#built[@]} -eq 0 ]]; then
+    echo "error: rpm not produced under $RPM_TOP/RPMS/x86_64" >&2
+    exit 1
+  fi
+  cp -f "${built[0]}" "$DIST/$RPM_NAME"
+else
+  echo "==> rpmbuild not found; using tools/mkbinaryrpm.py"
+  python3 "$ROOT/tools/mkbinaryrpm.py" \
+    --name niraluli \
+    --version "$VERSION" \
+    --release "$RELEASE" \
+    --arch x86_64 \
+    --summary "$SUMMARY" \
+    --description "$DESCRIPTION" \
+    --license Apache-2.0 \
+    --buildroot "$BUILDROOT" \
+    --output "$DIST/$RPM_NAME"
 fi
-
-echo "==> rpmbuild -bb"
-rpmbuild -bb \
-  --define "_topdir ${RPM_TOP}" \
-  --define "debug_package %{nil}" \
-  "$RPM_TOP/SPECS/niraluli.spec"
-
-shopt -s nullglob
-built=( "$RPM_TOP"/RPMS/x86_64/niraluli-"${VERSION}"-*.x86_64.rpm )
-if [[ ${#built[@]} -eq 0 ]]; then
-  echo "error: rpm not produced under $RPM_TOP/RPMS/x86_64" >&2
-  exit 1
-fi
-cp -f "${built[0]}" "$DIST/$RPM_NAME"
-# Also keep the distro-tagged name if different
-cp -f "${built[0]}" "$DIST/$(basename "${built[0]}")"
 
 echo
 echo "Artifacts:"
-ls -lh "$DIST/$ZIP_NAME" "$DIST/$RPM_NAME" "${built[0]}"
+ls -lh "$DIST/$ZIP_NAME" "$DIST/$RPM_NAME"
 echo "done."
