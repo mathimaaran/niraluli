@@ -662,8 +662,17 @@ func (e *emitter) pkgVarInitNeeded(p *check.PkgInfo) bool {
 		return false
 	}
 	for _, d := range p.File.Decls {
-		if vd, ok := d.(*ast.VarDecl); ok && len(vd.Values) > 0 {
-			return true
+		switch d := d.(type) {
+		case *ast.VarDecl:
+			if len(d.Values) > 0 {
+				return true
+			}
+		case *ast.VarGroupDecl:
+			for _, spec := range d.Specs {
+				if len(spec.Values) > 0 {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -674,29 +683,56 @@ func (e *emitter) writePkgVarGlobals(b *strings.Builder, pkgs []*check.PkgInfo) 
 		e.pkg = p.Name
 		e.importLocal = p.ImportLocal
 		for _, d := range p.File.Decls {
-			vd, ok := d.(*ast.VarDecl)
-			if !ok {
-				continue
-			}
-			if usesSliceType(vd.Type) {
-				e.needSlice = true
-			}
-			if len(vd.Values) > 0 {
-				e.needPkgVarInit = true
-			}
-			for _, name := range vd.Names {
-				b.WriteString(e.cTypeExpr(vd.Type))
-				b.WriteByte(' ')
-				b.WriteString(cPkgIdent(p.Name, name.Name))
-				b.WriteString(" = ")
-				b.WriteString(e.zeroInit(vd.Type))
-				b.WriteString(";\n")
+			switch d := d.(type) {
+			case *ast.VarDecl:
+				e.writeOnePkgVarGlobal(b, p.Name, &ast.VarSpec{Names: d.Names, Type: d.Type, Values: d.Values})
+			case *ast.VarGroupDecl:
+				for _, spec := range d.Specs {
+					e.writeOnePkgVarGlobal(b, p.Name, spec)
+				}
 			}
 		}
 	}
 	if e.needPkgVarInit {
 		b.WriteByte('\n')
 	}
+}
+
+func (e *emitter) writeOnePkgVarGlobal(b *strings.Builder, pkg string, spec *ast.VarSpec) {
+	if spec == nil {
+		return
+	}
+	if spec.Type != nil && usesSliceType(spec.Type) {
+		e.needSlice = true
+	}
+	if len(spec.Values) > 0 {
+		e.needPkgVarInit = true
+	}
+	for i, name := range spec.Names {
+		ct, zt := e.varSpecCType(pkg, name.Name, spec, i)
+		b.WriteString(ct)
+		b.WriteByte(' ')
+		b.WriteString(cPkgIdent(pkg, name.Name))
+		b.WriteString(" = ")
+		b.WriteString(zt)
+		b.WriteString(";\n")
+	}
+}
+
+func (e *emitter) varSpecCType(pkg, name string, spec *ast.VarSpec, i int) (cType, zero string) {
+	if spec.Type != nil {
+		return e.cTypeExpr(spec.Type), e.zeroInit(spec.Type)
+	}
+	if e.info != nil && e.info.PkgVarTypes != nil {
+		if t, ok := e.info.PkgVarTypes[pkg+"."+name]; ok {
+			return e.cTypeFrom(t), e.zeroInitType(t)
+		}
+	}
+	if i < len(spec.Values) {
+		t := e.typeOf(spec.Values[i])
+		return e.cTypeFrom(t), e.zeroInitType(t)
+	}
+	return "void", "0"
 }
 
 func (e *emitter) writePkgVarInitFuncs(b *strings.Builder, pkgs []*check.PkgInfo) {
@@ -710,22 +746,29 @@ func (e *emitter) writePkgVarInitFuncs(b *strings.Builder, pkgs []*check.PkgInfo
 		b.WriteString(cPkgIdent(p.Name, "__init_vars"))
 		b.WriteString("(void) {\n")
 		for _, d := range p.File.Decls {
-			vd, ok := d.(*ast.VarDecl)
-			if !ok {
-				continue
-			}
-			for i, name := range vd.Names {
-				if i >= len(vd.Values) {
-					continue
+			switch d := d.(type) {
+			case *ast.VarDecl:
+				e.writePkgVarInits(b, p.Name, d.Names, d.Values)
+			case *ast.VarGroupDecl:
+				for _, spec := range d.Specs {
+					e.writePkgVarInits(b, p.Name, spec.Names, spec.Values)
 				}
-				b.WriteString("\t")
-				b.WriteString(cPkgIdent(p.Name, name.Name))
-				b.WriteString(" = ")
-				e.writeExpr(b, vd.Values[i])
-				b.WriteString(";\n")
 			}
 		}
 		b.WriteString("}\n\n")
+	}
+}
+
+func (e *emitter) writePkgVarInits(b *strings.Builder, pkg string, names []*ast.Ident, values []ast.Expr) {
+	for i, name := range names {
+		if i >= len(values) {
+			continue
+		}
+		b.WriteString("\t")
+		b.WriteString(cPkgIdent(pkg, name.Name))
+		b.WriteString(" = ")
+		e.writeExpr(b, values[i])
+		b.WriteString(";\n")
 	}
 }
 
@@ -1539,7 +1582,7 @@ func (e *emitter) cTypeExpr(te ast.TypeExpr) string {
 			}
 		}
 		switch te.Name {
-		case "முழுஎண்":
+		case "முழுஎண்", "முழுஎண்64":
 			return "int64_t"
 		case "நிலை":
 			return "int"
@@ -1547,10 +1590,20 @@ func (e *emitter) cTypeExpr(te ast.TypeExpr) string {
 			return "const char *"
 		case "மிதவைஎண்":
 			return "double"
-		case "இருமி8":
+		case "இருமி8", "நேர்முழு8":
 			return "uint8_t"
-		case "இருமி32":
+		case "இருமி32", "முழுஎண்32":
 			return "int32_t"
+		case "முழுஎண்8":
+			return "int8_t"
+		case "முழுஎண்16":
+			return "int16_t"
+		case "நேர்முழு16":
+			return "uint16_t"
+		case "நேர்முழு32":
+			return "uint32_t"
+		case "நேர்முழு64":
+			return "uint64_t"
 		default:
 			if t, ok := e.lookupNamed(te); ok {
 				return e.cTypeFrom(t)
@@ -1614,6 +1667,22 @@ func (e *emitter) resolveTypeExpr(te ast.TypeExpr) check.Type {
 			return check.TypeByte
 		case "இருமி32":
 			return check.TypeRune
+		case "முழுஎண்8":
+			return check.TypeInt8
+		case "முழுஎண்16":
+			return check.TypeInt16
+		case "முழுஎண்32":
+			return check.TypeInt32
+		case "முழுஎண்64":
+			return check.TypeInt64
+		case "நேர்முழு8":
+			return check.TypeUint8
+		case "நேர்முழு16":
+			return check.TypeUint16
+		case "நேர்முழு32":
+			return check.TypeUint32
+		case "நேர்முழு64":
+			return check.TypeUint64
 		}
 		return check.TypeInvalid
 	case *ast.SliceType:
@@ -1750,7 +1819,7 @@ func (e *emitter) cTypeFrom(t check.Type) string {
 		}
 	}
 	switch t {
-	case check.TypeInt:
+	case check.TypeInt, check.TypeInt64:
 		return "int64_t"
 	case check.TypeFloat:
 		return "double"
@@ -1758,10 +1827,20 @@ func (e *emitter) cTypeFrom(t check.Type) string {
 		return "int"
 	case check.TypeString:
 		return "const char *"
-	case check.TypeByte:
+	case check.TypeByte, check.TypeUint8:
 		return "uint8_t"
-	case check.TypeRune:
+	case check.TypeRune, check.TypeInt32:
 		return "int32_t"
+	case check.TypeInt8:
+		return "int8_t"
+	case check.TypeInt16:
+		return "int16_t"
+	case check.TypeUint16:
+		return "uint16_t"
+	case check.TypeUint32:
+		return "uint32_t"
+	case check.TypeUint64:
+		return "uint64_t"
 	default:
 		return "int64_t"
 	}
@@ -1779,7 +1858,9 @@ func (e *emitter) writeSliceFieldPrint(b *strings.Builder, access string, t chec
 		fmt.Fprintf(b, "\t\tuli_print_bool_n(%s(%s, __i));\n", e.sliceGetName(t), access)
 	case elem == check.TypeString:
 		fmt.Fprintf(b, "\t\tuli_print_quoted_n(%s(%s, __i));\n", e.sliceGetName(t), access)
-	case elem == check.TypeInt, elem == check.TypeByte, elem == check.TypeRune:
+	case elem == check.TypeInt, elem == check.TypeByte, elem == check.TypeRune,
+		elem == check.TypeInt8, elem == check.TypeInt16, elem == check.TypeInt32, elem == check.TypeInt64,
+		elem == check.TypeUint8, elem == check.TypeUint16, elem == check.TypeUint32, elem == check.TypeUint64:
 		fmt.Fprintf(b, "\t\tuli_print_int_n((int64_t)%s(%s, __i));\n", e.sliceGetName(t), access)
 	case elem == check.TypeFloat:
 		fmt.Fprintf(b, "\t\tuli_print_float_n(%s(%s, __i));\n", e.sliceGetName(t), access)
@@ -1818,6 +1899,24 @@ func (e *emitter) zeroInit(te ast.TypeExpr) string {
 	case *ast.SliceType, *ast.ArrayType, *ast.FuncType, *ast.MapType:
 		return "{0}"
 	case *ast.PointerType, *ast.ChanType:
+		return "NULL"
+	default:
+		return "0"
+	}
+}
+
+func (e *emitter) zeroInitType(t check.Type) string {
+	t = e.peelUnderlying(t)
+	switch {
+	case t == check.TypeString:
+		return "\"\""
+	case check.IsSlice(t) || check.IsArray(t) || check.IsMap(t) || check.IsFunc(t):
+		return "{0}"
+	case e.info != nil && e.info.Structs[t] != nil:
+		return "{0}"
+	case e.info != nil && e.info.PtrElem[t] != 0:
+		return "NULL"
+	case check.IsChan(t):
 		return "NULL"
 	default:
 		return "0"
@@ -1877,6 +1976,22 @@ func (e *emitter) typeStr(t check.Type) string {
 		return "இருமி8"
 	case check.TypeRune:
 		return "இருமி32"
+	case check.TypeInt8:
+		return "முழுஎண்8"
+	case check.TypeInt16:
+		return "முழுஎண்16"
+	case check.TypeInt32:
+		return "முழுஎண்32"
+	case check.TypeInt64:
+		return "முழுஎண்64"
+	case check.TypeUint8:
+		return "நேர்முழு8"
+	case check.TypeUint16:
+		return "நேர்முழு16"
+	case check.TypeUint32:
+		return "நேர்முழு32"
+	case check.TypeUint64:
+		return "நேர்முழு64"
 	default:
 		if check.IsSlice(t) {
 			return "[]" + e.typeStr(check.ElemOfSlice(e.info, t))
@@ -3203,6 +3318,58 @@ func (e *emitter) writeBlock(b *strings.Builder, block *ast.BlockStmt, level int
 	}
 }
 
+func (e *emitter) writeVarSpec(b *strings.Builder, spec *ast.VarSpec, level int) {
+	if spec == nil {
+		return
+	}
+	if spec.Type != nil && usesSliceType(spec.Type) {
+		e.needSlice = true
+	}
+	for i, name := range spec.Names {
+		var ct, zt string
+		if spec.Type != nil {
+			ct = e.cTypeExpr(spec.Type)
+			zt = e.zeroInit(spec.Type)
+		} else if i < len(spec.Values) {
+			t := e.typeOf(spec.Values[i])
+			ct = e.cTypeFrom(t)
+			zt = e.zeroInitType(t)
+		} else {
+			ct, zt = "void", "0"
+		}
+		if e.isPromoted(name.Name) {
+			t := e.promoted[name.Name]
+			if i < len(spec.Values) {
+				tmp := fmt.Sprintf("_ci_%d", e.swID)
+				e.swID++
+				indent(b, level)
+				b.WriteString(ct)
+				b.WriteByte(' ')
+				b.WriteString(tmp)
+				b.WriteString(" = ")
+				e.writeExpr(b, spec.Values[i])
+				b.WriteString(";\n")
+				e.writePromoteAlloc(b, name.Name, t, tmp, level)
+			} else {
+				e.writePromoteAlloc(b, name.Name, t, zt, level)
+			}
+			continue
+		}
+		indent(b, level)
+		b.WriteString(ct)
+		b.WriteByte(' ')
+		b.WriteString(cIdent(name.Name))
+		if i < len(spec.Values) {
+			b.WriteString(" = ")
+			e.writeExpr(b, spec.Values[i])
+		} else {
+			b.WriteString(" = ")
+			b.WriteString(zt)
+		}
+		b.WriteString(";\n")
+	}
+}
+
 func (e *emitter) writeShortVar(b *strings.Builder, s *ast.ShortVarDecl, level int) {
 	if len(s.Names) > 1 && len(s.Values) == 1 {
 		tmp := fmt.Sprintf("_mret_%d", e.swID)
@@ -3482,43 +3649,12 @@ func (e *emitter) writeStmt(b *strings.Builder, s ast.Stmt, level int) {
 		return
 	case *ast.ConstGroupDecl:
 		return
+	case *ast.VarGroupDecl:
+		for _, spec := range s.Specs {
+			e.writeVarSpec(b, spec, level)
+		}
 	case *ast.VarDecl:
-		if usesSliceType(s.Type) {
-			e.needSlice = true
-		}
-		for i, name := range s.Names {
-			if e.isPromoted(name.Name) {
-				t := e.promoted[name.Name]
-				init := e.zeroInit(s.Type)
-				if i < len(s.Values) {
-					tmp := fmt.Sprintf("_ci_%d", e.swID)
-					e.swID++
-					indent(b, level)
-					b.WriteString(e.cTypeExpr(s.Type))
-					b.WriteByte(' ')
-					b.WriteString(tmp)
-					b.WriteString(" = ")
-					e.writeExpr(b, s.Values[i])
-					b.WriteString(";\n")
-					e.writePromoteAlloc(b, name.Name, t, tmp, level)
-				} else {
-					e.writePromoteAlloc(b, name.Name, t, init, level)
-				}
-				continue
-			}
-			indent(b, level)
-			b.WriteString(e.cTypeExpr(s.Type))
-			b.WriteByte(' ')
-			b.WriteString(cIdent(name.Name))
-			if i < len(s.Values) {
-				b.WriteString(" = ")
-				e.writeExpr(b, s.Values[i])
-			} else {
-				b.WriteString(" = ")
-				b.WriteString(e.zeroInit(s.Type))
-			}
-			b.WriteString(";\n")
-		}
+		e.writeVarSpec(b, &ast.VarSpec{Names: s.Names, Type: s.Type, Values: s.Values}, level)
 	case *ast.ShortVarDecl:
 		e.writeShortVar(b, s, level)
 	case *ast.AssignStmt:
@@ -4308,6 +4444,8 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 			b.WriteByte('!')
 		case token.MUL:
 			b.WriteByte('*')
+		case token.XOR:
+			b.WriteByte('~')
 		}
 		e.writeExpr(b, expr.X)
 		b.WriteByte(')')
@@ -4433,6 +4571,10 @@ func (e *emitter) writeExpr(b *strings.Builder, expr ast.Expr) {
 			return
 		}
 		if sel, ok := expr.Fun.(*ast.SelectorExpr); ok {
+			if e.info != nil && e.info.FmtPlans[expr] != nil {
+				e.writeFmtSprintfCall(b, expr)
+				return
+			}
 			if e.typeOf(sel.X) == check.TypeInvalid {
 				if id, ok := sel.X.(*ast.Ident); ok {
 					b.WriteString(cPkgIdent(e.realPkg(id.Name), sel.Sel.Name))
@@ -5009,7 +5151,9 @@ func (e *emitter) writeBinary(b *strings.Builder, expr *ast.BinaryExpr) {
 	}
 	// Mixed integer / மிதவைஎண்: promote integer side to double.
 	isIntish := func(t check.Type) bool {
-		return t == check.TypeInt || t == check.TypeByte || t == check.TypeRune
+		return t == check.TypeInt || t == check.TypeByte || t == check.TypeRune ||
+			t == check.TypeInt8 || t == check.TypeInt16 || t == check.TypeInt32 || t == check.TypeInt64 ||
+			t == check.TypeUint8 || t == check.TypeUint16 || t == check.TypeUint32 || t == check.TypeUint64
 	}
 	mixFloat := (isIntish(lt) || lt == check.TypeFloat) &&
 		(isIntish(rt) || rt == check.TypeFloat) &&
@@ -5021,6 +5165,18 @@ func (e *emitter) writeBinary(b *strings.Builder, expr *ast.BinaryExpr) {
 		b.WriteByte(')')
 	} else {
 		e.writeExpr(b, expr.X)
+	}
+	if expr.Op == token.AND_NOT {
+		b.WriteString(" & ~(")
+		if mixFloat && isIntish(rt) {
+			b.WriteString("(double)(")
+			e.writeExpr(b, expr.Y)
+			b.WriteString(")")
+		} else {
+			e.writeExpr(b, expr.Y)
+		}
+		b.WriteString("))")
+		return
 	}
 	b.WriteByte(' ')
 	b.WriteString(opString(expr.Op))
@@ -5062,7 +5218,9 @@ func (e *emitter) writePrint(b *strings.Builder, arg ast.Expr) {
 		b.WriteString("uli_print_float(")
 		e.writeExpr(b, arg)
 		b.WriteByte(')')
-	case check.TypeByte, check.TypeRune:
+	case check.TypeByte, check.TypeRune,
+		check.TypeInt8, check.TypeInt16, check.TypeInt32, check.TypeInt64,
+		check.TypeUint8, check.TypeUint16, check.TypeUint32, check.TypeUint64:
 		b.WriteString("uli_print_int((int64_t)(")
 		e.writeExpr(b, arg)
 		b.WriteString("))")
@@ -5126,6 +5284,18 @@ func opString(op token.Kind) string {
 		return "/"
 	case token.REM:
 		return "%"
+	case token.AND:
+		return "&"
+	case token.OR:
+		return "|"
+	case token.XOR:
+		return "^"
+	case token.AND_NOT:
+		return "&~"
+	case token.SHL:
+		return "<<"
+	case token.SHR:
+		return ">>"
 	case token.EQL:
 		return "=="
 	case token.NEQ:

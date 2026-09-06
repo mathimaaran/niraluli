@@ -7,7 +7,7 @@ Linux (x86-64 first, then i386), with NASM as a later backend.
 **நிரலுளி** joins **நிரல்** (program) and **உளி** (chisel): a tool for carving programs.
 
 **Phase 0:** complete (Tamil-0 frozen 2026-08-01).  
-**Phase 1:** active C backend through v0.72; NASM remains later.
+**Phase 1:** active C backend through v0.77; NASM remains later.
 
 | Item | Value |
 |------|--------|
@@ -16,7 +16,7 @@ Linux (x86-64 first, then i386), with NASM as a later backend.
 | Source extension | `.uli` |
 | Keywords | Semantic Tamil |
 | Semantics | Go-inspired, free to diverge |
-| Language subset | **v0.72** |
+| Language subset | **v0.77** |
 | Early backend | Emit C (reuse `gcc`/`clang`) |
 | Later backend | NASM → Linux ELF (64-bit, then 32-bit) |
 | Status | Experimental research compiler (Linux + C backend) |
@@ -120,7 +120,7 @@ Niraluli source uses Tamil script. If you see **squares** instead of letters, in
 ## Status
 
 - Phase 0 complete — Tamil-0 **frozen** (2026-08-01). See `notes/design-decisions.md`.
-- Phase 1: lexer + parser + typecheck + **C emit/run** through **v0.72** on Linux.
+- Phase 1: lexer + parser + typecheck + **C emit/run** through **v0.77** on Linux.
 - Suitable for **public experimental** use if framed as early/research; not a polished production language yet.
 - Next major backend: NASM x86-64. Optional leftovers live in [`notes/deferred.md`](notes/deferred.md).
 

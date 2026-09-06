@@ -27,12 +27,17 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `ஊழியர்_முழுஅடுக்கு/` | Tamil-0.62 | React employee grid + Niraluli REST API + Tamil SQLite (`SETUP.md`) |
 | `கோப்பு/` | Tamil-0.63 | POSIX file open/read/write via `கொணர் "கோப்பு"` |
 | `நேரம்/` | Tamil-0.64 | wall clock, sleep, duration helpers via `கொணர் "நேரம்"` |
-| `வடிவமைப்பு/` | Tamil-0.66 | fmt-style `%s` formatting via `கொணர் "வடிவம்"` (variadic) |
+| `வடிவமைப்பு/` | Tamil-0.66/0.77 | fmt `%s` and typed verbs via `கொணர் "வடிவம்"` |
 | `பலவாதங்கள்.uli` | Tamil-0.66/0.69 | variadic `...முழுஎண்` and `slice...` expand |
 | `மாறிலி.uli` | Tamil-0.67 | package + local compile-time constants |
 | `மாறி_தொகுப்பு.uli` | Tamil-0.70 | package-level variables |
 | `பொதுவகை_வகை.uli` | Tamil-0.71 | generic types and constraints |
 | `பொதுவகை_முறை.uli` | Tamil-0.72 | generic methods on generic types |
+| `மாறி_குழு.uli` | Tamil-0.73 | package/block `மாறி ( … )` groups |
+| `இருமியியக்கம்.uli` | Tamil-0.74 | bitwise/shifts and iota flags |
+| `முழுஅகலம்.uli` | Tamil-0.75 | integer widths |
+| `பொதுவகை_மாற்று.uli` | Tamil-0.76 | generic type aliases |
+| `வடிவமைப்பு/` | Tamil-0.66/0.77 | fmt `%s` and typed verbs |
 | `செயல்பாடு_புலம்.uli` | Tamil-0.58 | function values in struct and slice fields |
 | `குவியல்.uli` | Tamil-0.60 | indexed conservative GC + flattened string concat |
 

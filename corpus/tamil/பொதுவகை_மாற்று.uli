@@ -1,0 +1,24 @@
+// Tamil-0.76: generic type aliases.
+// Go equivalent:
+//
+//	package main
+//
+//	import "fmt"
+//
+//	type Vec[T any] = []T
+//
+//	func main() {
+//		var xs Vec[int] = []int{1, 2, 3}
+//		fmt.Println(xs[0])
+//		fmt.Println(len(xs))
+//	}
+
+தொகுப்பு தொடக்கம்
+
+வகை வெக்டர்[யா] = []யா
+
+செயல்பாடு தொடக்கம்() {
+    மாறி xs வெக்டர்[முழுஎண்] = []முழுஎண்{1, 2, 3}
+    பதிப்பி(xs[0])
+    பதிப்பி(நீளம்(xs))
+}

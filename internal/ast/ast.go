@@ -264,18 +264,36 @@ func TypeString(t TypeExpr) string {
 	}
 }
 
+// VarSpec is one name list with optional type and values inside a var group (Tamil-0.73).
+type VarSpec struct {
+	Names  []*Ident
+	Type   TypeExpr // optional when Values present (inferred)
+	Values []Expr   // optional when Type present (zero-init)
+}
+
 // VarDecl is மாறி names Type [ = values ]
 type VarDecl struct {
 	TokPos   token.Pos
-	Exported bool // வெளி (top-level only; unused until package vars)
+	Exported bool // வெளி (top-level only)
 	Names    []*Ident
-	Type     TypeExpr
+	Type     TypeExpr // required for standalone; optional in inferred group specs only via VarGroupDecl
 	Values   []Expr
 }
 
 func (d *VarDecl) Pos() token.Pos { return d.TokPos }
 func (d *VarDecl) declNode()      {}
 func (d *VarDecl) stmtNode()      {}
+
+// VarGroupDecl is மாறி ( spec { ";" spec } ) (Tamil-0.73).
+type VarGroupDecl struct {
+	TokPos   token.Pos
+	Exported bool
+	Specs    []*VarSpec
+}
+
+func (d *VarGroupDecl) Pos() token.Pos { return d.TokPos }
+func (d *VarGroupDecl) declNode()      {}
+func (d *VarGroupDecl) stmtNode()      {}
 
 // ConstSpec is one name list with optional type and values inside a const group.
 type ConstSpec struct {

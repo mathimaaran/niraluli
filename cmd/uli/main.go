@@ -355,6 +355,8 @@ func printFile(f *ast.File) {
 			fmt.Printf("func %s%s(%d params)%s { %d stmts }\n", recv, d.Name.Name, len(d.Params), res, len(d.Body.List))
 		case *ast.VarDecl:
 			fmt.Printf("var %d names type %s\n", len(d.Names), ast.TypeString(d.Type))
+		case *ast.VarGroupDecl:
+			fmt.Printf("var group %d specs\n", len(d.Specs))
 		case *ast.TypeDecl:
 			fmt.Printf("type %s\n", d.Name.Name)
 		default:

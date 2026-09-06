@@ -1,16 +1,16 @@
 id: generics
 status: codegen
-subset: Tamil-0.72
+subset: Tamil-0.76
 go_inspired: |
   func Identity[T any](x T) T { return x }
   type Box[T any] struct { val T }
+  type Vec[T any] = []T
   func (b Box[T]) Get() T { return b.val }
-  func (b *Box[T]) Set(v T) { b.val = v }
   type NumOrText[T int | string] struct { x T }
   pkg.Identity(5)
 tamil_ebnf: |
   FunctionDecl = "செயல்பாடு" FunctionName [ TypeParams ] Signature FunctionBody .
-  TypeDecl     = "வகை" TypeName [ TypeParams ] ( StructType | Type ) .
+  TypeDecl     = "வகை" TypeName [ TypeParams ] ( "=" Type | StructType | Type ) .
   TypeParams   = "[" TypeParam { "," TypeParam } "]" .
   TypeParam    = identifier [ Constraint ] .
   Constraint   = Type { "|" Type } | "எதுவும்" .
@@ -21,28 +21,25 @@ semantics: >
   (and ஆ, …). Optional constraint: omitted or எதுவும் means any; T | U | V
   is a union of concrete types. Inference from arguments at calls; explicit
   f[T](…) or f[T,U](…). Generic structs and defined types monomorphize per
-  instantiation (பெட்டி[முழுஎண்]{…}). Methods on generic types use the type's
-  parameters in the receiver (பெட்டி[யா]), not method-level [T]; each
-  instantiation gets monomorphized methods. Slice params []யா; exported via கொணர்.
-  C backend monomorphizes each instantiation. No interface constraints yet.
+  instantiation (பெட்டி[முழுஎண்]{…}). Generic aliases வகை T[யா] = U instantiate
+  to the substituted underlying type (no new named type). Methods on generic
+  types use the type's parameters in the receiver; each instantiation gets
+  monomorphized methods. C backend monomorphizes. No interface constraints yet.
 examples:
   - tamil: |
+      வகை வெக்டர்[யா] = []யா
       வகை பெட்டி[யா] அமைப்பு { val யா }
       செயல்பாடு (b பெட்டி[யா]) பெறு() யா { திருப்பு b.val }
-      செயல்பாடு (b *பெட்டி[யா]) வை(v யா) { b.val = v }
-      வகை எண்அல்லது[டி முழுஎண் | சரம்] அமைப்பு { x டி }
-      செயல்பாடு தலை[யா](xs []யா) யா { திருப்பு xs[0] }
       a := பெட்டி[முழுஎண்]{val: 42}
-      பதிப்பி(முதல்[சரம், முழுஎண்]("x", 99))
+      மாறி xs வெக்டர்[முழுஎண்] = []முழுஎண்{1, 2}
     go_equivalent: |
+      type Vec[T any] = []T
       type Box[T any] struct { val T }
       func (b Box[T]) Get() T { return b.val }
-      func (b *Box[T]) Set(v T) { b.val = v }
-      type NumOrText[T int | string] struct { x T }
-      func Head[T any](xs []T) T { return xs[0] }
       a := Box[int]{val: 42}
-      fmt.Println(First[string, int]("x", 99))
+      var xs Vec[int] = []int{1, 2}
 notes:
   - "Tamil-0.71: generic types, union constraints, எதுவும்."
   - "Tamil-0.72: methods on generic types (receiver uses type params)."
-  - "Type aliases and interface constraints still later."
+  - "Tamil-0.76: generic type aliases."
+  - "Interface constraints still later."

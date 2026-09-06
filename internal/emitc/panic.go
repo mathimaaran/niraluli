@@ -68,6 +68,15 @@ func (e *emitter) markPanicNeeds(pkgs []*check.PkgInfo) {
 						return
 					}
 				}
+			case *ast.VarGroupDecl:
+				for _, spec := range d.Specs {
+					for _, v := range spec.Values {
+						if hasPanicInExpr(v) {
+							e.needPanic = true
+							return
+						}
+					}
+				}
 			}
 		}
 	}
@@ -155,6 +164,14 @@ func hasPanicInStmt(s ast.Stmt) bool {
 		for _, x := range s.Values {
 			if hasPanicInExpr(x) {
 				return true
+			}
+		}
+	case *ast.VarGroupDecl:
+		for _, spec := range s.Specs {
+			for _, x := range spec.Values {
+				if hasPanicInExpr(x) {
+					return true
+				}
 			}
 		}
 	}

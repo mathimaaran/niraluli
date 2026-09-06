@@ -263,7 +263,10 @@ func insertsSemi(k token.Kind) bool {
 	case token.IDENT, token.INT, token.STRING, token.TRUE, token.FALSE, token.NIL,
 		token.BREAK, token.CONTINUE, token.RETURN,
 		token.RPAREN, token.RBRACK, token.RBRACE,
-		token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING:
+		token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING, token.TYPE_FLOAT,
+		token.TYPE_BYTE, token.TYPE_RUNE,
+		token.TYPE_INT8, token.TYPE_INT16, token.TYPE_INT32, token.TYPE_INT64,
+		token.TYPE_UINT8, token.TYPE_UINT16, token.TYPE_UINT32, token.TYPE_UINT64:
 		return true
 	default:
 		return false
@@ -337,10 +340,17 @@ func (l *Lexer) Next() token.Token {
 			return l.finish(token.Token{Kind: token.MUL, Lit: "*", Pos: start})
 		case '&':
 			l.next()
+			if l.peek() == '^' {
+				l.next()
+				return l.finish(token.Token{Kind: token.AND_NOT, Lit: "&^", Pos: start})
+			}
 			return l.finish(token.Token{Kind: token.AND, Lit: "&", Pos: start})
 		case '|':
 			l.next()
 			return l.finish(token.Token{Kind: token.OR, Lit: "|", Pos: start})
+		case '^':
+			l.next()
+			return l.finish(token.Token{Kind: token.XOR, Lit: "^", Pos: start})
 		case '%':
 			l.next()
 			return l.finish(token.Token{Kind: token.REM, Lit: "%", Pos: start})
@@ -413,6 +423,10 @@ func (l *Lexer) Next() token.Token {
 				l.next()
 				return l.finish(token.Token{Kind: token.ARROW, Lit: "<-", Pos: start})
 			}
+			if l.peek() == '<' {
+				l.next()
+				return l.finish(token.Token{Kind: token.SHL, Lit: "<<", Pos: start})
+			}
 			if l.peek() == '=' {
 				l.next()
 				return l.finish(token.Token{Kind: token.LEQ, Lit: "<=", Pos: start})
@@ -420,6 +434,10 @@ func (l *Lexer) Next() token.Token {
 			return l.finish(token.Token{Kind: token.LSS, Lit: "<", Pos: start})
 		case '>':
 			l.next()
+			if l.peek() == '>' {
+				l.next()
+				return l.finish(token.Token{Kind: token.SHR, Lit: ">>", Pos: start})
+			}
 			if l.peek() == '=' {
 				l.next()
 				return l.finish(token.Token{Kind: token.GEQ, Lit: ">=", Pos: start})

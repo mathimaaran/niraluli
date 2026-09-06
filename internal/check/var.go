@@ -2,6 +2,7 @@ package check
 
 import (
 	"niraluli/internal/ast"
+	"niraluli/internal/token"
 )
 
 // pkgVar is one package-level மாறி.
@@ -24,11 +25,12 @@ func (c *Checker) collectPackageVars(f *ast.File) {
 		c.cur.vars = map[string]*pkgVar{}
 	}
 	for _, d := range f.Decls {
-		vd, ok := d.(*ast.VarDecl)
-		if !ok {
-			continue
+		switch d := d.(type) {
+		case *ast.VarDecl:
+			c.definePackageVar(d)
+		case *ast.VarGroupDecl:
+			c.definePackageVarGroup(d)
 		}
-		c.definePackageVar(vd)
 	}
 }
 
@@ -36,16 +38,43 @@ func (c *Checker) definePackageVar(d *ast.VarDecl) {
 	if d == nil || c.cur == nil {
 		return
 	}
-	t := c.typeFromExpr(d.Type)
-	if t == TypeInvalid {
-		c.error(d.Type.Pos(), "invalid type")
+	c.definePackageVarSpec(&ast.VarSpec{
+		Names:  d.Names,
+		Type:   d.Type,
+		Values: d.Values,
+	}, d.Exported, d.Pos())
+}
+
+func (c *Checker) definePackageVarGroup(d *ast.VarGroupDecl) {
+	if d == nil || c.cur == nil {
 		return
 	}
-	if len(d.Values) != 0 && len(d.Values) != len(d.Names) {
-		c.error(d.Pos(), "wrong number of initializers")
+	for _, spec := range d.Specs {
+		c.definePackageVarSpec(spec, d.Exported, d.Pos())
+	}
+}
+
+func (c *Checker) definePackageVarSpec(spec *ast.VarSpec, exported bool, pos token.Pos) {
+	if spec == nil {
 		return
 	}
-	for i, name := range d.Names {
+	var t Type = TypeInvalid
+	if spec.Type != nil {
+		t = c.typeFromExpr(spec.Type)
+		if t == TypeInvalid {
+			c.error(spec.Type.Pos(), "invalid type")
+			return
+		}
+	}
+	if len(spec.Values) != 0 && len(spec.Values) != len(spec.Names) {
+		c.error(pos, "wrong number of initializers")
+		return
+	}
+	if spec.Type == nil && len(spec.Values) == 0 {
+		c.error(pos, "variable declaration requires a type or initializer")
+		return
+	}
+	for i, name := range spec.Names {
 		if name == nil {
 			continue
 		}
@@ -65,14 +94,27 @@ func (c *Checker) definePackageVar(d *ast.VarDecl) {
 			c.error(name.Pos(), "already declared: %s", name.Name)
 			continue
 		}
-		if i < len(d.Values) {
-			vt := c.checkExpr(d.Values[i])
-			if !c.assignable(vt, t, d.Values[i]) {
-				c.error(d.Values[i].Pos(), "cannot initialize %s as %s", c.typStr(t), c.typStr(vt))
+		nt := t
+		if i < len(spec.Values) {
+			vt := c.checkExpr(spec.Values[i])
+			if spec.Type == nil {
+				if vt == TypeVoid || vt == TypeInvalid {
+					c.error(spec.Values[i].Pos(), "cannot infer type for %s", name.Name)
+					continue
+				}
+				nt = vt
+			} else if !c.assignable(vt, t, spec.Values[i]) {
+				c.error(spec.Values[i].Pos(), "cannot initialize %s as %s", c.typStr(t), c.typStr(vt))
 				continue
 			}
 		}
-		c.cur.vars[name.Name] = &pkgVar{typ: t, exported: d.Exported}
+		c.cur.vars[name.Name] = &pkgVar{typ: nt, exported: exported}
+		if c.info != nil {
+			if c.info.PkgVarTypes == nil {
+				c.info.PkgVarTypes = map[string]Type{}
+			}
+			c.info.PkgVarTypes[c.cur.name+"."+name.Name] = nt
+		}
 	}
 }
 

@@ -1,23 +1,22 @@
 status: codegen
-subset: Tamil-0.70
+subset: Tamil-0.73
 go_analogue: var
 syntax: |
-  VarDecl = "மாறி" IdentifierList Type [ "=" ExpressionList ] .
-  # Package-level and block-level. Optional வெளி for package export.
+  VarDecl      = "மாறி" ( VarSpec | "(" { VarSpec ";" } ")" ) .
+  VarSpec      = IdentifierList ( Type [ "=" ExpressionList ] | "=" ExpressionList ) .
 semantics: |
-  Declares variables with an explicit type. Tamil-0.70 adds package-level
-  மாறி (top-level variables were previously rejected). Package vars are
-  zero-initialized; explicit initializers run in a per-package __init_vars
-  hook before entry. Same-package read/assign uses the bare name; other
-  packages use pkg.Name with வெளி. Block-level மாறி unchanged.
+  Declares variables with an explicit type, or infers from initializers when
+  Type is omitted (group specs and Go-style). Tamil-0.70 added package-level
+  மாறி; Tamil-0.73 adds parenthesized மாறி ( … ) groups at package and block
+  scope. No iota / previous-RHS repeat (unlike மாறிலி groups). Package vars
+  zero-init; explicit initializers run in __init_vars before entry.
 examples:
   - |
-      வெளி மாறி பதிப்பு முழுஎண் = 1
-      மாறி எண் முழுஎண்
-      செயல்பாடு தொடக்கம்() {
-          எண் = 42
-          பதிப்பி(எண்)
-      }
+      மாறி (
+          பதிப்பு முழுஎண் = 1
+          எண் முழுஎண்
+          பெயர் = "நிரலுளி"
+      )
 notes:
   - "Short declare := remains local only."
-  - "No parenthesized var ( … ) groups yet."
+  - "Tamil-0.73: parenthesized var groups."

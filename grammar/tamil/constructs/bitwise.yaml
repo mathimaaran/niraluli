@@ -1,0 +1,24 @@
+id: bitwise
+status: codegen
+subset: Tamil-0.74
+go_inspired: |
+  const ( read = 1 << iota; write; exec )
+  x := 7 &^ write
+  y := ^0
+tamil_ebnf: |
+  Multiplicative = … | "<<" | ">>" | "&" | "&^" .
+  Additive       = … | "|" | "^" .
+  Unary          = … | "^" Unary .
+semantics: >
+  Integer bitwise and shift operators: & | ^ << >> &^ and unary ^.
+  | remains constraint-union only inside type-parameter lists; expression
+  | is bitwise OR (context-disambiguated). Const-fold supports 1 << iota flags.
+examples:
+  - tamil: |
+      மாறிலி ( வாசி = 1 << iota; எழுது; இயக்கு )
+      பதிப்பி(வாசி | எழுது)
+    go_equivalent: |
+      const ( read = 1 << iota; write; exec )
+      fmt.Println(read | write)
+notes:
+  - "Tamil-0.74: bitwise/shifts unlock iota bit flags."

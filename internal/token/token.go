@@ -22,11 +22,19 @@ const (
 	IF         // எனில்
 	ELSE       // இல்லையேல்
 	RETURN     // திருப்பு
-	TYPE_INT   // முழுஎண்
+	TYPE_INT   // முழுஎண் (int64)
 	TYPE_BOOL  // நிலை
 	TYPE_FLOAT // மிதவைஎண்
 	TYPE_BYTE  // இருமி8 (byte / uint8)
 	TYPE_RUNE  // இருமி32 (rune / int32)
+	TYPE_INT8  // முழுஎண்8
+	TYPE_INT16 // முழுஎண்16
+	TYPE_INT32 // முழுஎண்32
+	TYPE_INT64 // முழுஎண்64
+	TYPE_UINT8  // நேர்முழு8
+	TYPE_UINT16 // நேர்முழு16
+	TYPE_UINT32 // நேர்முழு32
+	TYPE_UINT64 // நேர்முழு64
 	TRUE       // மெய்
 	FALSE      // பொய்
 	PRINT      // பதிப்பி (builtin name; reserved)
@@ -62,8 +70,12 @@ const (
 	MUL // * (also unary deref / pointer type)
 	QUO // /
 	REM // %
-	AND // & (unary address-of)
-	OR  // | (constraint union in type params)
+	AND // & (unary address-of; binary bitwise AND)
+	OR  // | (constraint union in type params; binary bitwise OR)
+	XOR // ^ (binary XOR; unary bitwise complement)
+	SHL // <<
+	SHR // >>
+	AND_NOT // &^
 	ARROW // <-
 
 	EQL    // ==
@@ -110,6 +122,14 @@ var kindNames = [...]string{
 	TYPE_FLOAT: "TYPE_FLOAT",
 	TYPE_BYTE:  "TYPE_BYTE",
 	TYPE_RUNE:  "TYPE_RUNE",
+	TYPE_INT8:  "TYPE_INT8",
+	TYPE_INT16: "TYPE_INT16",
+	TYPE_INT32: "TYPE_INT32",
+	TYPE_INT64: "TYPE_INT64",
+	TYPE_UINT8:  "TYPE_UINT8",
+	TYPE_UINT16: "TYPE_UINT16",
+	TYPE_UINT32: "TYPE_UINT32",
+	TYPE_UINT64: "TYPE_UINT64",
 	TRUE:      "TRUE",
 	FALSE:     "FALSE",
 	PRINT:     "PRINT",
@@ -147,6 +167,10 @@ var kindNames = [...]string{
 	REM: "REM",
 	AND: "AND",
 	OR:  "OR",
+	XOR: "XOR",
+	SHL: "SHL",
+	SHR: "SHR",
+	AND_NOT: "AND_NOT",
 	ARROW: "ARROW",
 
 	EQL:    "EQL",
@@ -193,6 +217,14 @@ var Keywords = map[string]Kind{
 	"மிதவைஎண்":  TYPE_FLOAT,
 	"இருமி8":    TYPE_BYTE,
 	"இருமி32":   TYPE_RUNE,
+	"முழுஎண்8":  TYPE_INT8,
+	"முழுஎண்16": TYPE_INT16,
+	"முழுஎண்32": TYPE_INT32,
+	"முழுஎண்64": TYPE_INT64,
+	"நேர்முழு8":  TYPE_UINT8,
+	"நேர்முழு16": TYPE_UINT16,
+	"நேர்முழு32": TYPE_UINT32,
+	"நேர்முழு64": TYPE_UINT64,
 	"மெய்":      TRUE,
 	"பொய்":      FALSE,
 	"பதிப்பி":   PRINT,

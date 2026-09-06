@@ -59,12 +59,13 @@ func (c *Checker) checkTypeArgsConstraints(typeArgs []Type, constraints []typeCo
 }
 
 type genericTypeSchema struct {
-	decl           *ast.TypeDecl
-	typeParams     []Type
-	paramNames     []string
-	constraints    []typeConstraint
-	isStruct       bool
-	schematicType  Type
+	decl          *ast.TypeDecl
+	typeParams    []Type
+	paramNames    []string
+	constraints   []typeConstraint
+	isStruct      bool
+	isAlias       bool
+	schematicType Type
 }
 
 func (c *Checker) typeArgsAreSchemaParams(exprs []ast.TypeExpr, sch *genericTypeSchema) bool {
@@ -89,13 +90,9 @@ func (c *Checker) registerGenericType(td *ast.TypeDecl) {
 		c.error(td.Name.Pos(), "type redeclared: %s", name)
 		return
 	}
-	if td.Alias {
-		c.error(td.Name.Pos(), "generic type aliases not supported yet")
-		return
-	}
 	schema := &genericTypeSchema{
-		decl:     td,
-		isStruct: false,
+		decl:    td,
+		isAlias: td.Alias,
 	}
 	prevEnv := c.typeParamEnv
 	c.typeParamEnv = map[string]Type{}
@@ -116,7 +113,12 @@ func (c *Checker) registerGenericType(td *ast.TypeDecl) {
 		schema.paramNames = append(schema.paramNames, pname)
 		schema.constraints = append(schema.constraints, c.resolveConstraint(tp))
 	}
-	if _, ok := td.Type.(*ast.StructType); ok {
+	if td.Alias {
+		if td.Type == nil {
+			c.error(td.Name.Pos(), "missing alias type for %s", name)
+		}
+		// RHS validated under type-param env at instantiation (Tamil-0.76).
+	} else if _, ok := td.Type.(*ast.StructType); ok {
 		schema.isStruct = true
 		schema.schematicType = c.registerSchematicStruct(td, schema)
 	} else if td.Type == nil {
@@ -255,6 +257,27 @@ func (c *Checker) instantiateGenericType(sch *genericTypeSchema, st *pkgState, t
 
 	var tid Type
 	name := c.monoTypeKey(sch.decl.Name.Name, typeArgs)
+	if sch.isAlias {
+		// Resolve RHS with type parameters, then substitute concrete args.
+		paramEnv := map[string]Type{}
+		for i, pname := range sch.paramNames {
+			paramEnv[pname] = sch.typeParams[i]
+		}
+		c.typeParamEnv = paramEnv
+		raw := c.typeFromExpr(sch.decl.Type)
+		under := c.substType(raw, subst)
+		if under == TypeInvalid || under == TypeVoid {
+			c.error(sch.decl.Type.Pos(), "invalid alias type")
+			c.typeParamEnv = prevEnv
+			return TypeInvalid
+		}
+		c.typeParamEnv = prevEnv
+		c.info.TypeByName[key] = under
+		if st == c.cur {
+			c.cur.types[name] = under
+		}
+		return under
+	}
 	if sch.isStruct {
 		stype, ok := sch.decl.Type.(*ast.StructType)
 		if !ok {

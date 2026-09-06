@@ -13,7 +13,7 @@ Update when a subset ships (strike or move items) or when a construct card recor
 | Interfaces | Only if earned (e.g. Go-style `Handler`) | method.yaml |
 | Interface constraints on generics | After interfaces | generics.yaml |
 
-Shipped: 0.11–0.72 (through generic methods on generic types).
+Shipped: 0.11–0.77 (through typed fmt verbs on constant formats).
 
 ## Backlog leftovers (pre-NASM optional; keep out of critical path)
 
@@ -27,7 +27,7 @@ Shipped: 0.11–0.72 (through generic methods on generic types).
 | Public database driver ABI | Internal C vtable is not a third-party plugin API | database.yaml |
 | File seek / directories / chmod | Tamil-0.63 is open/read/write/close + whole-file helpers | file.yaml |
 | Timers / tickers / parse / locations | Tamil-0.64 is now/sleep/since + RFC3339 UTC format | time.yaml |
-| Variadic / typed fmt verbs (`%d`) | Tamil-0.66 has `...T`; `%d`/`any` still later | fmt.yaml |
+| ~~Typed fmt verbs on constant formats~~ | Tamil-0.77 `%d/%t/%g/%v` | fmt.yaml |
 | Interfaces | Only if earned | method.yaml |
 
 ## Struct & types
@@ -76,6 +76,11 @@ Shipped: 0.11–0.72 (through generic methods on generic types).
 | ~~Package-level variables~~ | Tamil-0.70 `மாறி` | var.yaml |
 | ~~Generic types / union constraints~~ | Tamil-0.71 | generics.yaml |
 | ~~Generic methods on generic types~~ | Tamil-0.72 | generics.yaml |
+| ~~Var groups `மாறி ( … )`~~ | Tamil-0.73 | var.yaml |
+| ~~Bitwise / shifts~~ | Tamil-0.74 | bitwise.yaml |
+| ~~Richer integer widths~~ | Tamil-0.75 | int-widths.yaml |
+| ~~Generic type aliases~~ | Tamil-0.76 | type-alias.yaml / generics.yaml |
+| ~~Typed fmt verbs (constant format)~~ | Tamil-0.77 | fmt.yaml |
 | Goroutines / channels | Tamil-0.48 on C (pthread); see goroutine.yaml | goroutine.yaml |
 | NASM + custom IR | IR when NASM begins | design-decisions |
 | Windows / macOS primary targets | Linux-first | Non-goals |

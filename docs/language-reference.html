@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Niraluli v0.72 language reference.">
+  <meta name="description" content="Niraluli v0.77 language reference.">
   <title>Language Reference — Niraluli Documentation</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="docs.js"></script>
@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">Reference</p>
     <h1>Language reference</h1>
-    <p class="lead">The implemented v0.72 source language: lexical rules, types, declarations, expressions, control flow, aggregates, functions (including generics and variadic <code>...T</code>), packages, and built-ins.</p>
+    <p class="lead">The implemented v0.77 source language: lexical rules, types, declarations, expressions, control flow, aggregates, functions (including generics and variadic <code>...T</code>), packages, and built-ins.</p>
   </section>
 
   <div class="toc">
@@ -117,8 +117,8 @@
 எண்ணிக்கை = 10
 அ, ஆ = ஆ, அ</code></pre>
   <p><code>:=</code> infers types and must introduce at least one new name in its scope. Parallel assignment evaluates right-hand values before assignment. Multiple-return calls unpack through <code>:=</code> or <code>=</code>.</p>
-  <p><code>மாறிலி</code> declares compile-time constants (package or block scope). The initializer must be a constant expression; assigning to a constant is an error. Parenthesized groups support multiple specs; within a group, <code>iota</code> counts 0, 1, 2, … and omitted RHS/type repeat the previous spec.</p>
-  <p>Package-level <code>மாறி</code> (Tamil-0.70) declares variables at file scope with optional <code>= init</code>. Without an initializer the variable is zero-initialized; explicit initializers run before <code>தொடக்கம்</code> via a generated init hook. Prefix <code>வெளி</code> to export a package variable.</p>
+  <p><code>மாறிலி</code> declares compile-time constants (package or block scope). The initializer must be a constant expression; assigning to a constant is an error. Parenthesized groups support multiple specs; within a group, <code>iota</code> counts 0, 1, 2, … and omitted RHS/type repeat the previous spec. Bit shifts unlock <code>1 &lt;&lt; iota</code> flags.</p>
+  <p>Package-level <code>மாறி</code> declares variables at file scope with optional <code>= init</code>. Parenthesized <code>மாறி ( … )</code> groups (Tamil-0.73) allow multiple specs; a type may be omitted when an initializer is present. Without an initializer the variable is zero-initialized; explicit initializers run before <code>தொடக்கம்</code>. Prefix <code>வெளி</code> to export.</p>
   <p>The blank identifier <code>_</code> discards values:</p>
   <pre><code>மதிப்பு, _ := கணக்கு()
 _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pre>
@@ -280,7 +280,8 @@ _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pr
 தள்ளிவை முடிந்தது    // zero-argument sugar for முடிந்தது()</code></pre>
 
   <h2 id="generics">Generics</h2>
-  <pre><code>வகை பெட்டி[யா] அமைப்பு { val யா }
+  <pre><code>வகை வெக்டர்[யா] = []யா
+வகை பெட்டி[யா] அமைப்பு { val யா }
 வகை எண்[டி முழுஎண் | சரம்] அமைப்பு { x டி }
 
 செயல்பாடு (b பெட்டி[யா]) பெறு() யா { திருப்பு b.val }
@@ -290,9 +291,10 @@ _, _ = வலை.எழுது(இணைப்பு, தரவு)</code></pr
 செயல்பாடு தலை[யா](xs []யா) யா { திருப்பு xs[0] }
 
 a := பெட்டி[முழுஎண்]{val: 42}
+மாறி xs வெக்டர்[முழுஎண்] = []முழுஎண்{1, 2}
 எண் := அடையாளம்(42)
 பெயர் := அடையாளம்[சரம்]("நிரலுளி")</code></pre>
-  <p>Function and type generics use type parameters in square brackets. Constraints may be omitted or written as <code>எதுவும்</code> (any), or as a union of concrete types (<code>முழுஎண் | சரம்</code>). Calls infer type arguments or accept explicit <code>f[T](…)</code>. Generic structs and defined types instantiate as <code>Name[T]{…}</code>. Methods on generic types use the type's parameters in the receiver (<code>(b பெட்டி[யா])</code>), not method-level <code>[T]</code>; each instantiation gets monomorphized methods. The C backend monomorphizes each instantiation. Interface constraints are not implemented.</p>
+  <p>Function and type generics use type parameters in square brackets. Constraints may be omitted or written as <code>எதுவும்</code> (any), or as a union of concrete types (<code>முழுஎண் | சரம்</code>). Calls infer type arguments or accept explicit <code>f[T](…)</code>. Generic structs and defined types instantiate as <code>Name[T]{…}</code>. Generic aliases (<code>வகை T[யா] = …</code>) instantiate to the substituted underlying type. Methods on generic types use the type's parameters in the receiver (<code>(b பெட்டி[யா])</code>), not method-level <code>[T]</code>. The C backend monomorphizes each instantiation. Interface constraints are not implemented.</p>
 
   <h2 id="packages">Packages and visibility</h2>
   <pre><code>தொகுப்பு பயன்பாடு

@@ -229,7 +229,9 @@ func (p *Parser) parseType() ast.TypeExpr {
 	tok := p.tok
 	switch tok.Kind {
 	case token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING, token.TYPE_FLOAT,
-		token.TYPE_BYTE, token.TYPE_RUNE:
+		token.TYPE_BYTE, token.TYPE_RUNE,
+		token.TYPE_INT8, token.TYPE_INT16, token.TYPE_INT32, token.TYPE_INT64,
+		token.TYPE_UINT8, token.TYPE_UINT16, token.TYPE_UINT32, token.TYPE_UINT64:
 		p.next()
 		return &ast.TypeName{TokPos: tok.Pos, Name: tok.Lit}
 	case token.IDENT:
@@ -259,6 +261,8 @@ func startsType(k token.Kind) bool {
 	switch k {
 	case token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING, token.TYPE_FLOAT,
 		token.TYPE_BYTE, token.TYPE_RUNE,
+		token.TYPE_INT8, token.TYPE_INT16, token.TYPE_INT32, token.TYPE_INT64,
+		token.TYPE_UINT8, token.TYPE_UINT16, token.TYPE_UINT32, token.TYPE_UINT64,
 		token.LBRACK, token.IDENT, token.MUL, token.MAP, token.FUNC, token.CHAN, token.ARROW:
 		return true
 	default:
@@ -309,9 +313,6 @@ func (p *Parser) parseTypeDecl(exported bool, exportPos token.Pos) *ast.TypeDecl
 	}
 	// வகை Name = Type  (alias)
 	if p.tok.Kind == token.ASSIGN {
-		if len(typeParams) > 0 {
-			p.errorExpected("generic type aliases not supported yet")
-		}
 		p.next()
 		return &ast.TypeDecl{
 			TokPos:     pos,
@@ -550,12 +551,27 @@ func (p *Parser) parseParameterList() []*ast.Field {
 	return fields
 }
 
-func (p *Parser) parseVarDecl(exported bool, exportPos token.Pos) *ast.VarDecl {
+// parseVarDecl parses மாறி names Type [ = values ] or மாறி ( spec { ";" spec } ).
+func (p *Parser) parseVarDecl(exported bool, exportPos token.Pos) ast.Decl {
 	pos := p.tok.Pos
 	if exported {
 		pos = exportPos
 	}
 	p.expect(token.VAR)
+	if p.tok.Kind == token.LPAREN {
+		p.next()
+		var specs []*ast.VarSpec
+		for p.tok.Kind != token.RPAREN && p.tok.Kind != token.EOF {
+			p.skipSemis()
+			if p.tok.Kind == token.RPAREN || p.tok.Kind == token.EOF {
+				break
+			}
+			specs = append(specs, p.parseVarSpec())
+			p.skipSemis()
+		}
+		p.expect(token.RPAREN)
+		return &ast.VarGroupDecl{TokPos: pos, Exported: exported, Specs: specs}
+	}
 	names := p.parseIdentList()
 	typ := p.parseType()
 	var values []ast.Expr
@@ -564,6 +580,23 @@ func (p *Parser) parseVarDecl(exported bool, exportPos token.Pos) *ast.VarDecl {
 		values = p.parseExprList()
 	}
 	return &ast.VarDecl{TokPos: pos, Exported: exported, Names: names, Type: typ, Values: values}
+}
+
+func (p *Parser) parseVarSpec() *ast.VarSpec {
+	names := p.parseIdentList()
+	var typ ast.TypeExpr
+	if p.tok.Kind != token.ASSIGN && startsType(p.tok.Kind) {
+		typ = p.parseType()
+	}
+	var values []ast.Expr
+	if p.tok.Kind == token.ASSIGN {
+		p.next()
+		values = p.parseExprList()
+	}
+	if typ == nil && len(values) == 0 {
+		p.errorExpected("மாறி requires a type or = initializer")
+	}
+	return &ast.VarSpec{Names: names, Type: typ, Values: values}
 }
 
 // parseConstDecl parses மாறிலி names [ Type ] = values or மாறிலி ( spec { ";" spec } ).
@@ -638,7 +671,11 @@ func (p *Parser) parseBlock() *ast.BlockStmt {
 func (p *Parser) parseStmt() ast.Stmt {
 	switch p.tok.Kind {
 	case token.VAR:
-		return p.parseVarDecl(false, p.tok.Pos)
+		d := p.parseVarDecl(false, p.tok.Pos)
+		if s, ok := d.(ast.Stmt); ok {
+			return s
+		}
+		return nil
 	case token.CONST:
 		d := p.parseConstDecl(false, p.tok.Pos)
 		if s, ok := d.(ast.Stmt); ok {
@@ -1039,10 +1076,12 @@ func startsExpr(k token.Kind) bool {
 	case token.IDENT, token.INT, token.FLOAT, token.STRING, token.TRUE, token.FALSE, token.NIL,
 		token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING, token.TYPE_FLOAT,
 		token.TYPE_BYTE, token.TYPE_RUNE,
+		token.TYPE_INT8, token.TYPE_INT16, token.TYPE_INT32, token.TYPE_INT64,
+		token.TYPE_UINT8, token.TYPE_UINT16, token.TYPE_UINT32, token.TYPE_UINT64,
 		token.PRINT, token.LEN, token.APPEND, token.MAKE, token.COPY, token.CAP, token.DELETE, token.CLOSE,
 		token.PANIC, token.RECOVER,
 		token.LPAREN, token.LBRACK, token.MAP, token.CHAN,
-		token.SUB, token.NOT, token.MUL, token.AND, token.ARROW:
+		token.SUB, token.NOT, token.MUL, token.AND, token.ARROW, token.XOR:
 		return true
 	default:
 		return false
@@ -1204,7 +1243,7 @@ func (p *Parser) parseTerm() ast.Expr {
 }
 
 func (p *Parser) parseTermLeft(x ast.Expr) ast.Expr {
-	for p.tok.Kind == token.ADD || p.tok.Kind == token.SUB {
+	for p.tok.Kind == token.ADD || p.tok.Kind == token.SUB || p.tok.Kind == token.OR || p.tok.Kind == token.XOR {
 		op := p.tok
 		p.next()
 		y := p.parseFactor()
@@ -1218,7 +1257,9 @@ func (p *Parser) parseFactor() ast.Expr {
 }
 
 func (p *Parser) parseFactorLeft(x ast.Expr) ast.Expr {
-	for p.tok.Kind == token.MUL || p.tok.Kind == token.QUO || p.tok.Kind == token.REM {
+	for p.tok.Kind == token.MUL || p.tok.Kind == token.QUO || p.tok.Kind == token.REM ||
+		p.tok.Kind == token.SHL || p.tok.Kind == token.SHR ||
+		p.tok.Kind == token.AND || p.tok.Kind == token.AND_NOT {
 		op := p.tok
 		p.next()
 		y := p.parseUnary()
@@ -1229,7 +1270,7 @@ func (p *Parser) parseFactorLeft(x ast.Expr) ast.Expr {
 
 func (p *Parser) parseUnary() ast.Expr {
 	switch p.tok.Kind {
-	case token.SUB, token.NOT, token.MUL, token.AND, token.ARROW:
+	case token.SUB, token.NOT, token.MUL, token.AND, token.ARROW, token.XOR:
 		op := p.tok
 		p.next()
 		return &ast.UnaryExpr{OpPos: op.Pos, Op: op.Kind, X: p.parseUnary()}
@@ -1334,7 +1375,9 @@ func (p *Parser) parseOperand() ast.Expr {
 		}
 		return id
 	case token.TYPE_INT, token.TYPE_BOOL, token.TYPE_STRING, token.TYPE_FLOAT,
-		token.TYPE_BYTE, token.TYPE_RUNE:
+		token.TYPE_BYTE, token.TYPE_RUNE,
+		token.TYPE_INT8, token.TYPE_INT16, token.TYPE_INT32, token.TYPE_INT64,
+		token.TYPE_UINT8, token.TYPE_UINT16, token.TYPE_UINT32, token.TYPE_UINT64:
 		// Type name as operand: T(x) or (*T)(x) after unary *.
 		tok := p.tok
 		p.next()

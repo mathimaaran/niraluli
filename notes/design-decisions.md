@@ -567,6 +567,15 @@ Function constraints use the same syntax. See `corpus/tamil/பொதுவக�
 type's type parameters (`(b பெட்டி[யா])`), not method-level `[T]`. Each
 instantiation monomorphizes method bodies. See `corpus/tamil/பொதுவகை_முறை.uli`.
 
+## Tamil-0.73–0.77 (2026-09-05)
+
+**Language polish batch:**
+- **0.73** `மாறி ( … )` groups (package + block), optional type inference
+- **0.74** bitwise/shifts (`& | ^ << >> &^`, unary `^`); `1 << iota`
+- **0.75** `முழுஎண்8…64` / `நேர்முழு8…64`
+- **0.76** generic aliases `வகை T[யா] = …`
+- **0.77** typed `வடிவமை` verbs `%d/%t/%g/%v` on constant formats
+
 ## Priority (2026-08-01)
 
 Harden the language (other gaps) **before** starting the NASM x86-64

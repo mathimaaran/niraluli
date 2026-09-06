@@ -152,6 +152,11 @@
         <tr><td>0.70</td><td>Package-level variables (<code>மாறி</code>) with optional <code>வெளி</code> export.</td></tr>
         <tr><td>0.71</td><td>Generic types (<code>வகை T[யா]</code>), union constraints (<code>T | U</code>), <code>எதுவும்</code>.</td></tr>
         <tr><td>0.72</td><td>Generic methods on generic types (<code>(b T[யா])</code> receivers, monomorphized).</td></tr>
+        <tr><td>0.73</td><td>Package/block <code>மாறி ( … )</code> groups with optional type inference.</td></tr>
+        <tr><td>0.74</td><td>Bitwise/shift operators (<code>&amp; | ^ &lt;&lt; &gt;&gt; &amp;^</code>, unary <code>^</code>); <code>1 &lt;&lt; iota</code>.</td></tr>
+        <tr><td>0.75</td><td>Integer widths <code>முழுஎண்8…64</code> / <code>நேர்முழு8…64</code>.</td></tr>
+        <tr><td>0.76</td><td>Generic type aliases (<code>வகை T[யா] = …</code>).</td></tr>
+        <tr><td>0.77</td><td>Typed fmt verbs <code>%d</code>/<code>%t</code>/<code>%g</code>/<code>%v</code> on constant <code>வடிவமை</code> formats.</td></tr>
       </tbody>
     </table>
   </div>
@@ -161,11 +166,8 @@
   <ul>
     <li>No interfaces, interface values, or interface constraints.</li>
     <li>No method-level type parameters (<code>func (T) M[U]()</code> style); receivers must use the generic type's params.</li>
-    <li>No generic type aliases (<code>வகை T = …</code> with type params).</li>
-    <li>No var groups (<code>மாறி ( … )</code>) at package level.</li>
-    <li>No bitwise operator family, richer integer widths, or complex numbers; bit-shift <code>iota</code> patterns wait on shift operators.</li>
-    <li>No directory/seek/chmod filesystem APIs beyond basic <code>கோப்பு</code> open/read/write; no timers/tickers/parse beyond basic <code>நேரம்</code>; formatting is <code>%s</code>-over-strings only (no typed <code>%d</code>); no JSON, crypto, or TLS packages.</li>
-    <li>Panic/recover payload is string-oriented, not arbitrary values.</li>
+    <li>Non-constant <code>வடிவமை</code> formats still require <code>...சரம்</code> and <code>%s</code> only.</li>
+    <li>No complex numbers; bitwise assign-ops (<code>&amp;=</code> etc.) not yet.</li>
   </ul>
 
   <h3>Runtime and platform</h3>
@@ -202,7 +204,7 @@
   <p>The current C backend remains the semantic reference while the native backend begins.</p>
 
   <h2 id="public">Public project status</h2>
-  <p>Niraluli v0.72 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
+  <p>Niraluli v0.77 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
   <p>Licensing: the repository is under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> (<code>LICENSE</code> + <code>NOTICE</code>). See also <a href="misc.html#license">Misc → License</a>.</p>
   <p>Remaining public-release hygiene:</p>
   <ul>

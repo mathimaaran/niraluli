@@ -1,0 +1,26 @@
+id: int-widths
+status: codegen
+subset: Tamil-0.75
+go_inspired: |
+  var a int8 = 10
+  var b uint16 = 20
+  c := int32(a) + int32(b)
+tamil_ebnf: |
+  TypeName includes முழுஎண்8/16/32/64 and நேர்முழு8/16/32/64.
+semantics: >
+  Signed widths முழுஎண்8/16/32/64 (int8…int64) and unsigned நேர்முழு8/16/32/64
+  (uint8…uint64). முழுஎண் remains the default int64; இருமி8/இருமி32 stay
+  byte/rune (not renamed). Untyped int literals assign to any integer width.
+  Conversions between integer kinds are allowed.
+examples:
+  - tamil: |
+      மாறி அ முழுஎண்8 = 10
+      மாறி ஆ நேர்முழு16 = 20
+      பதிப்பி(முழுஎண்(முழுஎண்32(அ) + முழுஎண்32(ஆ)))
+    go_equivalent: |
+      var a int8 = 10
+      var b uint16 = 20
+      fmt.Println(int64(int32(a) + int32(b)))
+notes:
+  - "இருமி32 is rune (int32), not uint32 — use நேர்முழு32 for unsigned."
+  - "Tamil-0.75."

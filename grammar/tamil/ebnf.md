@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.72** (2026-08-30) — generic methods on generic types.
+Status: **Tamil-0.77** (2026-09-05) — var groups, bitwise, int widths, generic aliases, typed fmt.
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -10,7 +10,7 @@ PackageClause = "தொகுப்பு" PackageName .
 PackageName   = identifier .
 ImportDecl    = "கொணர்" [ identifier ] string_lit .
 
-TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | ConstDecl | ConstGroupDecl | VarDecl | TypeDecl ) .
+TopLevelDecl  = [ "வெளி" ] ( FunctionDecl | ConstDecl | ConstGroupDecl | VarDecl | VarGroupDecl | TypeDecl ) .
 
 TypeDecl   = "வகை" identifier ( "=" Type | TypeLit | Type ) .
 TypeLit    = StructType .
@@ -37,11 +37,15 @@ ArrayType     = "[" integer_lit "]" Type .
 SliceType     = "[" "]" Type .
 MapType       = "அகராதி" "[" Type "]" Type .
 FuncType      = "செயல்பாடு" "(" [ TypeList ] ")" [ Result ] .
-TypeName      = "முழுஎண்" | "நிலை" | "சரம்" | "மிதவைஎண்" | "இருமி8" | "இருமி32" | QualifiedName .
+TypeName      = "முழுஎண்" | "முழுஎண்8" | "முழுஎண்16" | "முழுஎண்32" | "முழுஎண்64"
+              | "நேர்முழு8" | "நேர்முழு16" | "நேர்முழு32" | "நேர்முழு64"
+              | "நிலை" | "சரம்" | "மிதவைஎண்" | "இருமி8" | "இருமி32" | QualifiedName .
 QualifiedName = [ identifier "." ] identifier .
 PointerType   = "*" Type .
 
-VarDecl       = "மாறி" IdentifierList Type [ "=" ExpressionList ] .
+VarDecl        = "மாறி" ( VarSpec | "(" { VarSpec ";" } ")" ) .
+VarSpec        = IdentifierList ( Type [ "=" ExpressionList ] | "=" ExpressionList ) .
+VarGroupDecl   = "மாறி" "(" VarSpec { ";" VarSpec } ")" .
 ConstDecl      = "மாறிலி" IdentifierList [ Type ] "=" ExpressionList .
 ConstGroupDecl = "மாறிலி" "(" ConstSpec { ";" ConstSpec } ")" .
 ConstSpec      = IdentifierList [ Type ] [ "=" ExpressionList ] .
@@ -52,7 +56,7 @@ ExpressionList = Expression { "," Expression } .
 Block         = "{" StatementList "}" .
 StatementList = { Statement } .
 
-Statement     = ConstDecl | ConstGroupDecl | VarDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
+Statement     = ConstDecl | ConstGroupDecl | VarDecl | VarGroupDecl | SimpleStmt | IfStmt | SwitchStmt | ForStmt | BreakStmt | ContinueStmt | ReturnStmt | DeferStmt | Block .
 DeferStmt     = "தள்ளிவை" ( CallExpr | identifier | SelectorExpr ) .
 SimpleStmt    = ExpressionStmt | Assignment | ShortVarDecl .
 ExpressionStmt = Expression .
@@ -75,9 +79,9 @@ ReturnStmt = "திருப்பு" [ ExpressionList ] .
 Expression = Equality .
 Equality   = Comparison { ( "==" | "!=" ) Comparison } .
 Comparison = Term { ( "<" | "<=" | ">" | ">=" ) Term } .
-Term       = Factor { ( "+" | "-" ) Factor } .
-Factor     = Unary { ( "*" | "/" | "%" ) Unary } .
-Unary      = ( "-" | "!" | "*" | "&" ) Unary | Primary .
+Term       = Factor { ( "+" | "-" | "|" | "^" ) Factor } .
+Factor     = Unary { ( "*" | "/" | "%" | "<<" | ">>" | "&" | "&^" ) Unary } .
+Unary      = ( "-" | "!" | "*" | "&" | "^" ) Unary | Primary .
 Primary    = Operand { IndexOrSlice | "." identifier | Arguments } .
 IndexOrSlice = "[" Expression "]" | "[" [ Expression ] ":" [ Expression ] "]" .
 Arguments  = "(" [ ExpressionList ] ")" .
@@ -265,7 +269,7 @@ Comparable keys: floats, pointers, structs, arrays. See `constructs/map-keys.yam
 Unconstrained function type params `[யா, ஆ]`; optional union constraints
 `[T முழுஎண் | சரம்]` or explicit `எதுவும்` (any). Tamil-0.71 adds generic
 `வகை` declarations and `Name[T]` instantiation (structs and defined types).
-Tamil-0.72 adds methods on generic types: receiver uses the type's parameters
+Tamil-0.77 adds methods on generic types: receiver uses the type's parameters
 (`(b பெட்டி[யா])`), monomorphized per instantiation. Inference or `f[T](…)` /
 `f[T,U](…)`; exported via `கொணர்`. See `constructs/generics.yaml`.
 

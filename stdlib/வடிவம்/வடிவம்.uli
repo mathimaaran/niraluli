@@ -15,7 +15,9 @@
     திருப்பு ""
 }
 
-// வடிவமை replaces %s from மதிப்புகள் in order; %% is a literal %.
+// வடிவமை replaces verbs from மதிப்புகள் in order; %% is a literal %.
+// With a constant format, %d/%t/%g/%v are accepted and arguments are stringified (Tamil-0.77).
+// Non-constant formats still require ...சரம் and %s only.
 // Missing args become "%!s(MISSING)". Extra args are ignored. Unknown % verbs stay literal.
 வெளி செயல்பாடு வடிவமை(வார்ப்பு சரம், மதிப்புகள் ...சரம்) சரம் {
     திருப்பு ""

@@ -231,12 +231,10 @@ func (c *Checker) defineConstSpecs(specs []*ast.ConstSpec, exported, pkgLevel, r
 
 func (c *Checker) isConstAllowedType(t Type) bool {
 	u := c.underlying(t)
-	switch u {
-	case TypeInt, TypeFloat, TypeBool, TypeString, TypeByte, TypeRune:
+	if c.isInteger(u) || u == TypeFloat || u == TypeBool || u == TypeString {
 		return true
-	default:
-		return false
 	}
+	return false
 }
 
 func (c *Checker) constAssignable(v ConstValue, got, want Type) bool {
@@ -247,7 +245,7 @@ func (c *Checker) constAssignable(v ConstValue, got, want Type) bool {
 	if ug == uw {
 		return true
 	}
-	if v.Kind == ConstInt && (uw == TypeInt || uw == TypeByte || uw == TypeRune || uw == TypeFloat) {
+	if v.Kind == ConstInt && (c.isInteger(uw) || uw == TypeFloat) {
 		return true
 	}
 	if v.Kind == ConstFloat && uw == TypeFloat {
@@ -269,7 +267,9 @@ func (c *Checker) coerceConst(v ConstValue, want Type) ConstValue {
 		if v.Kind == ConstInt {
 			return ConstValue{Kind: ConstFloat, Float: float64(v.Int)}
 		}
-	case TypeByte, TypeRune, TypeInt:
+	case TypeByte, TypeRune, TypeInt,
+		TypeInt8, TypeInt16, TypeInt32, TypeInt64,
+		TypeUint8, TypeUint16, TypeUint32, TypeUint64:
 		if v.Kind == ConstInt {
 			return v
 		}
@@ -370,6 +370,12 @@ func (c *Checker) evalConst(e ast.Expr) (ConstValue, Type, bool) {
 				c.recordConstExpr(e, v)
 				return v, TypeBool, true
 			}
+		case token.XOR:
+			if xv.Kind == ConstInt {
+				v := ConstValue{Kind: ConstInt, Int: ^xv.Int}
+				c.recordConstExpr(e, v)
+				return v, TypeInt, true
+			}
 		}
 		return ConstValue{}, TypeInvalid, false
 	case *ast.BinaryExpr:
@@ -394,7 +400,8 @@ func (c *Checker) evalConst(e ast.Expr) (ConstValue, Type, bool) {
 				return v, TypeString, true
 			}
 			fallthrough
-		case token.SUB, token.MUL, token.QUO, token.REM:
+		case token.SUB, token.MUL, token.QUO, token.REM,
+			token.AND, token.OR, token.XOR, token.AND_NOT, token.SHL, token.SHR:
 			v, t, ok := arithConst(lv, lt, rv, rt, e.Op)
 			if !ok {
 				return ConstValue{}, TypeInvalid, false
@@ -459,6 +466,24 @@ func arithConst(lv ConstValue, lt Type, rv ConstValue, rt Type, op token.Kind) (
 			return ConstValue{}, TypeInvalid, false
 		}
 		n = a % b
+	case token.AND:
+		n = a & b
+	case token.OR:
+		n = a | b
+	case token.XOR:
+		n = a ^ b
+	case token.AND_NOT:
+		n = a &^ b
+	case token.SHL:
+		if b < 0 || b >= 64 {
+			return ConstValue{}, TypeInvalid, false
+		}
+		n = a << uint(b)
+	case token.SHR:
+		if b < 0 || b >= 64 {
+			return ConstValue{}, TypeInvalid, false
+		}
+		n = a >> uint(b)
 	default:
 		return ConstValue{}, TypeInvalid, false
 	}

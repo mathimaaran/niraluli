@@ -19,6 +19,14 @@ const (
 	TypeFloat           // மிதவைஎண்
 	TypeByte            // இருமி8
 	TypeRune            // இருமி32
+	TypeInt8            // முழுஎண்8
+	TypeInt16           // முழுஎண்16
+	TypeInt32           // முழுஎண்32
+	TypeInt64           // முழுஎண்64
+	TypeUint8           // நேர்முழு8
+	TypeUint16          // நேர்முழு16
+	TypeUint32          // நேர்முழு32
+	TypeUint64          // நேர்முழு64
 	TypeVoid            // no result
 	TypeSliceInt        // []முழுஎண்
 	TypeSliceBool       // []நிலை
@@ -54,6 +62,22 @@ func (t Type) String() string {
 		return "இருமி8"
 	case TypeRune:
 		return "இருமி32"
+	case TypeInt8:
+		return "முழுஎண்8"
+	case TypeInt16:
+		return "முழுஎண்16"
+	case TypeInt32:
+		return "முழுஎண்32"
+	case TypeInt64:
+		return "முழுஎண்64"
+	case TypeUint8:
+		return "நேர்முழு8"
+	case TypeUint16:
+		return "நேர்முழு16"
+	case TypeUint32:
+		return "நேர்முழு32"
+	case TypeUint64:
+		return "நேர்முழு64"
 	case TypeVoid:
 		return "void"
 	case TypeUntypedNil:
@@ -299,13 +323,15 @@ type Info struct {
 	Chans          map[Type]ChanInfo     // channel type → elem + dir
 	Funcs          map[Type]FuncInfo     // function type → params/results
 	VariadicPacks  map[*ast.CallExpr]*VariadicPack
-	TypeParamName  map[Type]string       // type parameter → source name
+	FmtPlans       map[*ast.CallExpr]*FmtPlan // வடிவம்.வடிவமை with typed verbs (Tamil-0.77)
+	TypeParamName  map[Type]string           // type parameter → source name
 	Instantiations []*MonoInst           // unique generic function instantiations
 	CallInst       map[*ast.CallExpr]*MonoInst
 	MethodValues   map[ast.Expr]*MethodValueInfo
 	MethodExprs    map[ast.Expr]*MethodExprInfo
 	PkgFuncValues  map[ast.Expr]*PkgFuncValueInfo
 	PkgVarValues   map[ast.Expr]*PkgVarValueInfo
+	PkgVarTypes    map[string]Type // "pkg.name" → type for package-level மாறி (incl. inferred)
 	Closures       map[*ast.FuncLit]*ClosureInfo
 	// Locals/params that must be arena-promoted because a nested closure captures them.
 	PromoteInFunc map[*ast.FuncDecl]map[string]Type
@@ -772,8 +798,8 @@ func (c *Checker) sliceOf(elem Type) (Type, bool) {
 	case TypeRune:
 		return TypeSliceRune, true
 	}
-	// Nested slices, []struct, []*T, []defined, []func, []type-param.
-	if !isSlice(elem) && !isStruct(elem) && !isPointer(elem) && !isDefined(elem) && !IsFunc(elem) && !IsTypeParam(elem) {
+	// Nested slices, []struct, []*T, []defined, []func, []type-param, []new-width-int.
+	if !isSlice(elem) && !isStruct(elem) && !isPointer(elem) && !isDefined(elem) && !IsFunc(elem) && !IsTypeParam(elem) && !isWidthInteger(elem) {
 		return TypeInvalid, false
 	}
 	for st, e := range c.info.SliceElem {
@@ -925,7 +951,7 @@ func (c *Checker) fillTypeFields(td *ast.TypeDecl) {
 func (c *Checker) resolveAliases(decls []ast.Decl) {
 	pending := []*ast.TypeDecl{}
 	for _, d := range decls {
-		if td, ok := d.(*ast.TypeDecl); ok && td.Alias {
+		if td, ok := d.(*ast.TypeDecl); ok && td.Alias && len(td.TypeParams) == 0 {
 			pending = append(pending, td)
 		}
 	}
@@ -968,7 +994,7 @@ func (c *Checker) resolveAliases(decls []ast.Decl) {
 }
 
 func (c *Checker) isFieldType(t Type) bool {
-	if t == TypeInt || t == TypeBool || t == TypeString || t == TypeFloat || t == TypeByte || t == TypeRune {
+	if c.isInteger(t) || t == TypeBool || t == TypeString || t == TypeFloat {
 		return true
 	}
 	if isSlice(t) || IsArray(t) || isPointer(t) || isStruct(t) || IsMap(t) || IsFunc(t) || IsChan(t) {
@@ -983,7 +1009,7 @@ func (c *Checker) isFieldType(t Type) bool {
 // comparable reports whether == / != is allowed (Go-like).
 func (c *Checker) comparable(t Type) bool {
 	switch {
-	case t == TypeInt || t == TypeBool || t == TypeString || t == TypeFloat || t == TypeByte || t == TypeRune:
+	case c.isInteger(t) || t == TypeBool || t == TypeString || t == TypeFloat:
 		return true
 	case isPointer(t):
 		return true
@@ -1215,6 +1241,22 @@ func (c *Checker) typeFromName(tn *ast.TypeName) Type {
 		return TypeByte
 	case "இருமி32":
 		return TypeRune
+	case "முழுஎண்8":
+		return TypeInt8
+	case "முழுஎண்16":
+		return TypeInt16
+	case "முழுஎண்32":
+		return TypeInt32
+	case "முழுஎண்64":
+		return TypeInt64
+	case "நேர்முழு8":
+		return TypeUint8
+	case "நேர்முழு16":
+		return TypeUint16
+	case "நேர்முழு32":
+		return TypeUint32
+	case "நேர்முழு64":
+		return TypeUint64
 	default:
 		if c.typeParamEnv != nil {
 			if t, ok := c.typeParamEnv[tn.Name]; ok {
@@ -1672,6 +1714,8 @@ func (c *Checker) checkStmt(s ast.Stmt) {
 	switch s := s.(type) {
 	case *ast.VarDecl:
 		c.checkVarDecl(s)
+	case *ast.VarGroupDecl:
+		c.checkVarGroup(s)
 	case *ast.ConstDecl:
 		c.checkConstDecl(s)
 	case *ast.ConstGroupDecl:
@@ -1833,22 +1877,49 @@ func (c *Checker) checkComm(s ast.Stmt) {
 }
 
 func (c *Checker) checkVarDecl(d *ast.VarDecl) {
-	t := c.typeFromExpr(d.Type)
-	if t == TypeInvalid {
-		c.error(d.Type.Pos(), "invalid type")
+	c.checkVarSpec(&ast.VarSpec{Names: d.Names, Type: d.Type, Values: d.Values}, d.Pos())
+}
+
+func (c *Checker) checkVarGroup(d *ast.VarGroupDecl) {
+	for _, spec := range d.Specs {
+		c.checkVarSpec(spec, d.Pos())
+	}
+}
+
+func (c *Checker) checkVarSpec(spec *ast.VarSpec, pos token.Pos) {
+	if spec == nil {
 		return
 	}
-	if len(d.Values) != 0 && len(d.Values) != len(d.Names) {
-		c.error(d.Pos(), "wrong number of initializers")
+	var t Type = TypeInvalid
+	if spec.Type != nil {
+		t = c.typeFromExpr(spec.Type)
+		if t == TypeInvalid {
+			c.error(spec.Type.Pos(), "invalid type")
+			return
+		}
 	}
-	for i, name := range d.Names {
-		if i < len(d.Values) {
-			vt := c.checkExpr(d.Values[i])
-			if !c.assignable(vt, t, d.Values[i]) {
-				c.error(d.Values[i].Pos(), "cannot initialize %s as %s", c.typStr(t), c.typStr(vt))
+	if len(spec.Values) != 0 && len(spec.Values) != len(spec.Names) {
+		c.error(pos, "wrong number of initializers")
+	}
+	if spec.Type == nil && len(spec.Values) == 0 {
+		c.error(pos, "variable declaration requires a type or initializer")
+		return
+	}
+	for i, name := range spec.Names {
+		nt := t
+		if i < len(spec.Values) {
+			vt := c.checkExpr(spec.Values[i])
+			if spec.Type == nil {
+				if vt == TypeVoid || vt == TypeInvalid {
+					c.error(spec.Values[i].Pos(), "cannot infer type for %s", name.Name)
+					continue
+				}
+				nt = vt
+			} else if !c.assignable(vt, t, spec.Values[i]) {
+				c.error(spec.Values[i].Pos(), "cannot initialize %s as %s", c.typStr(t), c.typStr(vt))
 			}
 		}
-		c.scope.declare(name.Name, t, name.Pos(), &c.errs)
+		c.scope.declare(name.Name, nt, name.Pos(), &c.errs)
 	}
 }
 
@@ -1919,7 +1990,7 @@ func (c *Checker) assignable(got, want Type, e ast.Expr) bool {
 	if isDefined(want) {
 		if under, ok := c.info.Underlying[want]; ok {
 			if lit, ok := e.(*ast.BasicLit); ok {
-				if lit.Kind == token.INT && (under == TypeInt || under == TypeByte || under == TypeRune) {
+				if lit.Kind == token.INT && c.isInteger(under) {
 					c.record(e, want)
 					return true
 				}
@@ -1934,9 +2005,9 @@ func (c *Checker) assignable(got, want Type, e ast.Expr) bool {
 			}
 		}
 	}
-	// Untyped int literal → இருமி8 / இருமி32.
+	// Untyped int literal → integer widths (இருமி8 / முழுஎண்8 / …).
 	if lit, ok := e.(*ast.BasicLit); ok && lit.Kind == token.INT && got == TypeInt {
-		if want == TypeByte || want == TypeRune {
+		if c.isInteger(want) {
 			c.record(e, want)
 			return true
 		}
@@ -2365,6 +2436,15 @@ func (c *Checker) checkExpr(e ast.Expr) Type {
 				c.error(e.Pos(), "unary ! requires நிலை")
 			}
 			t = TypeBool
+		case token.XOR:
+			if !c.isInteger(xt) && xt != TypeInvalid {
+				c.error(e.Pos(), "unary ^ requires integer operand")
+			}
+			if c.isInteger(xt) {
+				t = xt
+			} else {
+				t = TypeInt
+			}
 		case token.MUL:
 			if xt == TypeInvalid {
 				t = TypeInvalid
@@ -2868,6 +2948,20 @@ func (c *Checker) checkBinary(e *ast.BinaryExpr) Type {
 			return lt
 		}
 		return TypeInt
+	case token.AND, token.OR, token.XOR, token.AND_NOT, token.SHL, token.SHR:
+		if (!c.isInteger(lt) && lt != TypeInvalid) || (!c.isInteger(rt) && rt != TypeInvalid) {
+			c.error(e.OpPos, "bitwise operator requires integer operands")
+		}
+		if e.Op == token.SHL || e.Op == token.SHR {
+			if c.isInteger(lt) {
+				return lt
+			}
+			return TypeInt
+		}
+		if lt == rt && c.isInteger(lt) {
+			return lt
+		}
+		return TypeInt
 	case token.EQL, token.NEQ:
 		if lt == TypeUntypedNil && rt == TypeUntypedNil {
 			return TypeBool
@@ -2917,11 +3011,20 @@ func (c *Checker) checkBinary(e *ast.BinaryExpr) Type {
 }
 
 func (c *Checker) isNumeric(t Type) bool {
-	return t == TypeInt || t == TypeFloat || t == TypeByte || t == TypeRune
+	return c.isInteger(t) || t == TypeFloat
 }
 
 func (c *Checker) isInteger(t Type) bool {
-	return t == TypeInt || t == TypeByte || t == TypeRune
+	return t == TypeInt || t == TypeByte || t == TypeRune || isWidthInteger(t)
+}
+
+func isWidthInteger(t Type) bool {
+	switch t {
+	case TypeInt8, TypeInt16, TypeInt32, TypeInt64,
+		TypeUint8, TypeUint16, TypeUint32, TypeUint64:
+		return true
+	}
+	return false
 }
 
 func (c *Checker) underlying(t Type) Type {
@@ -3002,6 +3105,22 @@ func (c *Checker) lookupTypeName(name string) Type {
 		return TypeByte
 	case "இருமி32":
 		return TypeRune
+	case "முழுஎண்8":
+		return TypeInt8
+	case "முழுஎண்16":
+		return TypeInt16
+	case "முழுஎண்32":
+		return TypeInt32
+	case "முழுஎண்64":
+		return TypeInt64
+	case "நேர்முழு8":
+		return TypeUint8
+	case "நேர்முழு16":
+		return TypeUint16
+	case "நேர்முழு32":
+		return TypeUint32
+	case "நேர்முழு64":
+		return TypeUint64
 	}
 	if c.typeParamEnv != nil {
 		if t, ok := c.typeParamEnv[name]; ok {
@@ -3381,6 +3500,9 @@ func (c *Checker) checkPkgFuncCall(e *ast.CallExpr, sel *ast.SelectorExpr, imp *
 	}
 	if len(explicit) > 0 {
 		c.error(e.Pos(), "cannot instantiate non-generic function %s.%s", imp.name, sel.Sel.Name)
+	}
+	if t, ok := c.tryCheckFmtSprintf(e, imp, sel); ok {
+		return c.finishCallResult(e, []Type{t})
 	}
 	c.checkCallArgs(e, sig.params, sig.variadic, imp.name+"."+sel.Sel.Name)
 	return c.finishCallResult(e, sig.results)

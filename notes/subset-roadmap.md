@@ -105,6 +105,11 @@ Out of scope for Tamil-0:
 - [x] Package-level variables (`மாறி`)
 - [x] Generic types and union constraints
 - [x] Generic methods on generic types
+- [x] Package-level / block `மாறி ( … )` groups
+- [x] Bitwise and shift operators
+- [x] Richer integer widths
+- [x] Generic type aliases
+- [x] Typed fmt verbs on constant formats
 
 ## Later growth
 
