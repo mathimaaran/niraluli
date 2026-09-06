@@ -500,8 +500,8 @@ or truncates for writing (mode 0644). `படி` / `எழுது` transfer `
 buffers (EOF is `(0, இன்மை)` like network reads). `விடு` closes the handle.
 `படிஅனை` / `எழுதுஅனை` read or write an entire regular file in one call;
 read results are copied into the managed heap. Operational failures return
-`*கோப்பு.பிழை`. Blocking I/O parks for GC. No directories, seek, permissions
-API, or path utilities in this first slice.
+`*கோப்பு.பிழை`. Blocking I/O parks for GC. Tamil-0.78 adds seek, directories,
+chmod, and directory listing (see below).
 
 ## Tamil-0.64 (2026-08-23)
 
@@ -510,8 +510,9 @@ Stdlib package **நேரம்** adds wall-clock time and durations on Linux.
 `இப்போ` uses `CLOCK_REALTIME`; `உறங்கு` sleeps via `nanosleep` (parks for
 GC); `கழித்தது` is elapsed since an instant. Unit helpers
 (`நானோவினாடி` / `நுண்ணியவினாடி` / `மில்லிவினாடி` / `வினாடி`) build
-durations. `சரம்ஆக்கு` formats RFC3339 UTC with nanoseconds. No timers,
-tickers, time zones beyond UTC formatting, or parse API in this slice.
+durations. `சரம்ஆக்கு` formats RFC3339 UTC with nanoseconds. Tamil-0.79 adds
+parse, UTC/Local formatting, timers (`பின்னர்`), tickers (`துடிப்பு`), and
+`நிறுத்து`.
 
 ## Tamil-0.65 (2026-08-23)
 
@@ -575,6 +576,14 @@ instantiation monomorphizes method bodies. See `corpus/tamil/பொதுவக�
 - **0.75** `முழுஎண்8…64` / `நேர்முழு8…64`
 - **0.76** generic aliases `வகை T[யா] = …`
 - **0.77** typed `வடிவமை` verbs `%d/%t/%g/%v` on constant formats
+
+## Tamil-0.78–0.81 (2026-09-06)
+
+**Stdlib polish batch:**
+- **0.78** `கோப்பு`: `தேடு`, `அடைவுஉருவாக்கு`, `அடைவுபடி`, `அனுமதிமாற்று`
+- **0.79** `நேரம்`: `பகு`, `சரம்ஆக்குஇடம்`, `பின்னர்`, `துடிப்பு`, `நிறுத்து`
+- **0.80** HTTP: dial/connect timeout via `நேரமுடிவு`; relative redirect `Location`
+- **0.81** `தரவுத்தளம்`: PostgreSQL backend (`postgres`/`postgresql`, libpq dlopen)
 
 ## Priority (2026-08-01)
 

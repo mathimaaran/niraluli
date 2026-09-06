@@ -1,12 +1,19 @@
-// Niraluli stdlib: நேரம் — wall clock + duration (Tamil-0.64). Bodies are compiler intrinsics.
+// Niraluli stdlib: நேரம் — wall clock + duration (Tamil-0.64/0.79). Bodies are compiler intrinsics.
 
 தொகுப்பு நேரம்
+
+வெளி வகை பிழை அமைப்பு {
+    வெளி செய்தி சரம்
+}
 
 // காலம் is a duration in nanoseconds.
 வெளி வகை காலம் முழுஎண்
 
 // தருணம் is a UTC wall-clock instant as Unix nanoseconds.
 வெளி வகை தருணம் முழுஎண்
+
+வெளி மாறிலி UTC சரம் = "UTC"
+வெளி மாறிலி உள்ளூர் சரம் = "Local"
 
 வெளி செயல்பாடு நானோவினாடி(n முழுஎண்) காலம் {
     திருப்பு 0
@@ -46,4 +53,29 @@
 // சரம்ஆக்கு formats த as RFC3339 UTC with nanoseconds (…Z).
 வெளி செயல்பாடு சரம்ஆக்கு(த தருணம்) சரம் {
     திருப்பு ""
+}
+
+// சரம்ஆக்குஇடம் formats த in UTC or Local (இடம் "UTC" / "Local").
+வெளி செயல்பாடு சரம்ஆக்குஇடம்(த தருணம், இடம் சரம்) சரம் {
+    திருப்பு ""
+}
+
+// பகு parses RFC3339 (…Z or numeric offset).
+வெளி செயல்பாடு பகு(உரை சரம்) (தருணம், *பிழை) {
+    திருப்பு 0, இன்மை
+}
+
+// பின்னர் returns a buffered channel that receives the current time after க.
+வெளி செயல்பாடு பின்னர்(க காலம்) தடம் தருணம் {
+    திருப்பு ஆக்கு(தடம் தருணம், 1)
+}
+
+// துடிப்பு returns a buffered channel that receives the current time every க.
+வெளி செயல்பாடு துடிப்பு(க காலம்) தடம் தருணம் {
+    திருப்பு ஆக்கு(தடம் தருணம், 1)
+}
+
+// நிறுத்து stops a பின்னர் / துடிப்பு channel. மெய் if a future send was prevented.
+வெளி செயல்பாடு நிறுத்து(ச தடம் தருணம்) நிலை {
+    திருப்பு பொய்
 }

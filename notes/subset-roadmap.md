@@ -110,6 +110,10 @@ Out of scope for Tamil-0:
 - [x] Richer integer widths
 - [x] Generic type aliases
 - [x] Typed fmt verbs on constant formats
+- [x] File seek / directories / chmod (`கோப்பு`)
+- [x] Time parse / locations / timers / tickers (`நேரம்`)
+- [x] HTTP dial timeout + relative redirects
+- [x] PostgreSQL SQL backend (libpq dlopen)
 
 ## Later growth
 
@@ -120,11 +124,8 @@ Out of scope for Tamil-0:
 
 **Backlog leftovers** (not required before NASM; see [`deferred.md`](deferred.md)):
 
-- Dial / DNS timeouts
-- Relative HTTP redirects
 - HTTPS / TLS
-- Additional SQL backends (PostgreSQL / MySQL) behind the vtable
-- Database pooling and a public driver/plugin ABI
+- MySQL backend / pooling / public driver ABI
 - Interfaces (only if earned)
 - Larger Go-inspired features only if they earn their place
   (richer generics/constraints, …)

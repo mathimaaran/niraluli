@@ -55,6 +55,16 @@ func (e *emitter) writeFileIntrinsic(b *strings.Builder, fn *ast.FuncDecl) bool 
 			"\treturn (" + ret + "){ value, (" + errType + ")r.err };\n"
 	case "எழுதுஅனை":
 		call = "\treturn (" + errType + ")uli_file_write_all(" + cIdent("பாதை") + ", " + cIdent("தரவு") + ".data, " + cIdent("தரவு") + ".len);\n"
+	case "தேடு":
+		call = "\tuli_file_i64_result r = uli_file_seek(" + cIdent("க") + ", " + cIdent("இடம்") + ", " + cIdent("எங்கிருந்து") + ");\n\treturn (" + ret + "){ r.value, (" + errType + ")r.err };\n"
+	case "அடைவுஉருவாக்கு":
+		call = "\treturn (" + errType + ")uli_file_mkdir(" + cIdent("பாதை") + ", " + cIdent("அனுமதி") + ");\n"
+	case "அனுமதிமாற்று":
+		call = "\treturn (" + errType + ")uli_file_chmod(" + cIdent("பாதை") + ", " + cIdent("அனுமதி") + ");\n"
+	case "அடைவுபடி":
+		call = "\tuli_file_str_slice_result r = uli_file_readdir(" + cIdent("பாதை") + ");\n" +
+			"\tuli_slice_str value = { r.data, r.len, r.len };\n" +
+			"\treturn (" + ret + "){ value, (" + errType + ")r.err };\n"
 	default:
 		return false
 	}

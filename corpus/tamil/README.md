@@ -21,12 +21,16 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `வலை_பிழை/` | Tamil-0.55 | TCP error result (`*வலை.பிழை`) |
 | `வலை_வாடிக்கையாளர்/` | Tamil-0.59 | HTTP client + headers + chunked response |
 | `வலை_வாடிக்கையாளர்_பிழை/` | Tamil-0.57 | HTTPS/URL/reserved-header errors |
-| `வலை_திருப்பு/` | Tamil-0.61 | opt-in HTTP redirect + timeout options |
+| `வலை_திருப்பு/` | Tamil-0.80 | relative HTTP redirect + timeout options |
+| `வலை_நேரமுடிவு/` | Tamil-0.80 | HTTP dial/connect timeout |
 | `தகவல்_வலை/` | Tamil-0.61 | IPv4 UDP loopback datagrams |
 | `தரவுத்தளம்/` | Tamil-0.62 | shared SQL vtable + SQLite prepared statements |
+| `தரவுத்தளம்_postgres/` | Tamil-0.81 | PostgreSQL backend (skips if libpq/DSN missing) |
 | `ஊழியர்_முழுஅடுக்கு/` | Tamil-0.62 | React employee grid + Niraluli REST API + Tamil SQLite (`SETUP.md`) |
 | `கோப்பு/` | Tamil-0.63 | POSIX file open/read/write via `கொணர் "கோப்பு"` |
+| `கோப்பு_தேடல்/` | Tamil-0.78 | seek / mkdir / readdir / chmod |
 | `நேரம்/` | Tamil-0.64 | wall clock, sleep, duration helpers via `கொணர் "நேரம்"` |
+| `நேரம்_மேம்படு/` | Tamil-0.79 | parse, locations, timers, tickers |
 | `வடிவமைப்பு/` | Tamil-0.66/0.77 | fmt `%s` and typed verbs via `கொணர் "வடிவம்"` |
 | `பலவாதங்கள்.uli` | Tamil-0.66/0.69 | variadic `...முழுஎண்` and `slice...` expand |
 | `மாறிலி.uli` | Tamil-0.67 | package + local compile-time constants |

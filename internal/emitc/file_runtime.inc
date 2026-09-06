@@ -1,4 +1,5 @@
-/* Niraluli Tamil-0.63: file I/O (Linux). Blocking I/O parks for GC. */
+/* Niraluli Tamil-0.63/0.78: file I/O (Linux). Blocking I/O parks for GC. */
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -124,4 +125,76 @@ static void *uli_file_write_all(const char *path, const uint8_t *data, int64_t l
 	void *cerr = uli_file_close(opened.value);
 	if (wrote.err) return wrote.err;
 	return cerr;
+}
+
+static uli_file_i64_result uli_file_seek(int64_t fd, int64_t off, int64_t whence) {
+	if (whence < 0 || whence > 2) return (uli_file_i64_result){ 0, uli_file_error_new(EINVAL, "invalid seek whence") };
+	char sp;
+	uli_gc_park_begin(&sp);
+	off_t n = lseek((int)fd, (off_t)off, (int)whence);
+	uli_gc_park_end();
+	if (n == (off_t)-1) return (uli_file_i64_result){ 0, uli_file_errno_error() };
+	return (uli_file_i64_result){ (int64_t)n, NULL };
+}
+
+static void *uli_file_mkdir(const char *path, int64_t mode) {
+	if (!path || !path[0]) return uli_file_error_new(EINVAL, "empty file path");
+	char sp;
+	uli_gc_park_begin(&sp);
+	int rc = mkdir(path, (mode_t)mode);
+	uli_gc_park_end();
+	if (rc != 0) return uli_file_errno_error();
+	return NULL;
+}
+
+static void *uli_file_chmod(const char *path, int64_t mode) {
+	if (!path || !path[0]) return uli_file_error_new(EINVAL, "empty file path");
+	char sp;
+	uli_gc_park_begin(&sp);
+	int rc = chmod(path, (mode_t)mode);
+	uli_gc_park_end();
+	if (rc != 0) return uli_file_errno_error();
+	return NULL;
+}
+
+typedef struct { const char **data; int64_t len; void *err; } uli_file_str_slice_result;
+
+static uli_file_str_slice_result uli_file_readdir(const char *path) {
+	if (!path || !path[0]) return (uli_file_str_slice_result){ NULL, 0, uli_file_error_new(EINVAL, "empty file path") };
+	char sp;
+	uli_gc_park_begin(&sp);
+	DIR *dir = opendir(path);
+	uli_gc_park_end();
+	if (!dir) return (uli_file_str_slice_result){ NULL, 0, uli_file_errno_error() };
+
+	int64_t cap = 16, len = 0;
+	const char **names = (const char **)uli_alloc((size_t)cap * sizeof(const char *));
+	for (;;) {
+		errno = 0;
+		uli_gc_park_begin(&sp);
+		struct dirent *ent = readdir(dir);
+		int err = errno;
+		uli_gc_park_end();
+		if (!ent) {
+			if (err != 0) {
+				closedir(dir);
+				return (uli_file_str_slice_result){ NULL, 0, uli_file_error_new(err, strerror(err)) };
+			}
+			break;
+		}
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
+		size_t n = strlen(ent->d_name);
+		char *copy = (char *)uli_alloc(n + 1);
+		memcpy(copy, ent->d_name, n + 1);
+		if (len >= cap) {
+			int64_t ncap = cap * 2;
+			const char **grown = (const char **)uli_alloc((size_t)ncap * sizeof(const char *));
+			memcpy(grown, names, (size_t)len * sizeof(const char *));
+			names = grown;
+			cap = ncap;
+		}
+		names[len++] = copy;
+	}
+	closedir(dir);
+	return (uli_file_str_slice_result){ names, len, NULL };
 }

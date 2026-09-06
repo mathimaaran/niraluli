@@ -342,7 +342,7 @@ func TestDatabaseProgram(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(cSrc, "uli_db_vtable") || !strings.Contains(cSrc, "uli_sqlite_vtable") {
+	if !strings.Contains(cSrc, "uli_db_vtable") || !strings.Contains(cSrc, "uli_sqlite_vtable") || !strings.Contains(cSrc, "uli_pq_vtable") {
 		t.Fatalf("missing database vtable runtime\n%s", cSrc)
 	}
 	cc, err := exec.LookPath("gcc")
@@ -1217,5 +1217,205 @@ func TestHttpClientErrors(t *testing.T) {
 	}
 	if strings.Contains(out, "\nleak\n") || strings.HasSuffix(out, "leak\n") {
 		t.Fatalf("reserved header write still sent body: %q", out)
+	}
+}
+
+func TestFileSeekProgram(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "கோப்பு_தேடல்")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_file_seek") || !strings.Contains(cSrc, "uli_file_readdir") {
+		t.Fatalf("missing file polish runtime")
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	cmd := exec.Command(bin)
+	cmd.Dir = tmp
+	got, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s", err, got)
+	}
+	out := string(got)
+	if !strings.Contains(out, "CDEFGH") || !strings.Contains(out, "சரி") || !strings.Contains(out, "demo.txt") {
+		t.Fatalf("got %q", out)
+	}
+}
+
+func TestTimePolishProgram(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "நேரம்_மேம்படு")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_time_parse_rfc3339") || !strings.Contains(cSrc, "uli_time_after") {
+		t.Fatalf("missing time polish runtime")
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s", err, got)
+	}
+	out := string(got)
+	for _, want := range []string{"பகு", "உள்ளூர்", "பின்னர்", "நிறுத்து"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in %q", want, out)
+		}
+	}
+}
+
+func TestHTTPDialTimeout(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "வலை_நேரமுடிவு")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_net_dial_timeout") {
+		t.Fatalf("missing dial timeout runtime")
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s", err, got)
+	}
+	out := string(got)
+	if strings.Contains(out, "தவறு") {
+		t.Fatalf("expected dial error, got %q", out)
+	}
+	if !strings.Contains(out, "timeout") && !strings.Contains(out, "Network is unreachable") &&
+		!strings.Contains(out, "No route") && !strings.Contains(out, "Connection refused") &&
+		!strings.Contains(out, "timed out") {
+		t.Fatalf("unexpected dial result %q", out)
+	}
+}
+
+func TestPostgresBackendProgram(t *testing.T) {
+	dir := filepath.Join(root(t), "corpus", "tamil", "தரவுத்தளம்_postgres")
+	prog, lerrs := load.LoadProgram([]string{dir})
+	if len(lerrs) != 0 {
+		t.Fatal(lerrs)
+	}
+	merged, merrs := prog.MergedFiles()
+	if len(merrs) != 0 {
+		t.Fatal(merrs)
+	}
+	pi, errs := check.CheckProgram(merged, prog.Entry.Name)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	cSrc, err := emitc.EmitProgram(pi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cSrc, "uli_pq_vtable") {
+		t.Fatalf("missing postgres vtable")
+	}
+	cc, err := exec.LookPath("gcc")
+	if err != nil {
+		cc, err = exec.LookPath("cc")
+		if err != nil {
+			t.Skip("gcc/cc not available")
+		}
+	}
+	tmp := t.TempDir()
+	cFile := filepath.Join(tmp, "out.c")
+	bin := filepath.Join(tmp, "out")
+	if err := os.WriteFile(cFile, []byte(cSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(cc, "-std=c11", "-O2", "-pthread", cFile, "-o", bin, "-ldl").CombinedOutput(); err != nil {
+		t.Fatalf("cc: %v\n%s\n%s", err, out, cSrc)
+	}
+	got, err := exec.Command(bin).CombinedOutput()
+	if err != nil {
+		t.Fatalf("run: %v\n%s", err, got)
+	}
+	out := string(got)
+	if strings.HasPrefix(out, "தவிர்\n") {
+		t.Skipf("postgres unavailable: %s", out)
+	}
+	if !strings.Contains(out, "சரி") || !strings.Contains(out, "நிரலுளி") {
+		t.Fatalf("got %q", out)
 	}
 }

@@ -1,8 +1,10 @@
-/* Niraluli Tamil-0.55: TCP sockets (Linux). Blocking I/O parks for GC. */
+/* Niraluli Tamil-0.55/0.80: TCP sockets (Linux). Blocking I/O parks for GC. */
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -112,6 +114,77 @@ static uli_net_i64_result uli_net_dial(const char *addr) {
 		close(fd);
 		return (uli_net_i64_result){ 0, uli_net_errno_error() };
 	}
+	return (uli_net_i64_result){ fd, NULL };
+}
+
+/* Tamil-0.80: dial with connect timeout (ms). DNS resolve still parks but is not
+   separately capped; timeout applies to the non-blocking connect/poll phase. */
+static uli_net_i64_result uli_net_dial_timeout(const char *addr, int64_t timeout_ms) {
+	if (timeout_ms <= 0) return uli_net_dial(addr);
+	char host[256];
+	const char *port = NULL;
+	if (uli_net_hostport(addr, host, sizeof host, &port) != 0 || !host[0])
+		return (uli_net_i64_result){ 0, uli_net_error_new(EINVAL, "invalid dial address") };
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_NUMERICSERV;
+	struct addrinfo *res = NULL;
+	char sp;
+	uli_gc_park_begin(&sp);
+	int gai = getaddrinfo(host, port, &hints, &res);
+	uli_gc_park_end();
+	if (gai != 0 || !res)
+		return (uli_net_i64_result){ 0, uli_net_error_new(gai, gai_strerror(gai)) };
+	int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (fd < 0) {
+		freeaddrinfo(res);
+		return (uli_net_i64_result){ 0, uli_net_errno_error() };
+	}
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
+		close(fd);
+		freeaddrinfo(res);
+		return (uli_net_i64_result){ 0, uli_net_errno_error() };
+	}
+	uli_gc_park_begin(&sp);
+	int rc = connect(fd, res->ai_addr, res->ai_addrlen);
+	int cerr = errno;
+	uli_gc_park_end();
+	freeaddrinfo(res);
+	if (rc == 0) {
+		fcntl(fd, F_SETFL, flags);
+		return (uli_net_i64_result){ fd, NULL };
+	}
+	if (cerr != EINPROGRESS) {
+		close(fd);
+		return (uli_net_i64_result){ 0, uli_net_error_new(cerr, strerror(cerr)) };
+	}
+	struct pollfd pfd = { .fd = fd, .events = POLLOUT };
+	uli_gc_park_begin(&sp);
+	int pr = poll(&pfd, 1, (int)timeout_ms);
+	uli_gc_park_end();
+	if (pr == 0) {
+		close(fd);
+		return (uli_net_i64_result){ 0, uli_net_error_new(ETIMEDOUT, "dial timeout") };
+	}
+	if (pr < 0) {
+		int e = errno;
+		close(fd);
+		return (uli_net_i64_result){ 0, uli_net_error_new(e, strerror(e)) };
+	}
+	int soerr = 0;
+	socklen_t slen = sizeof soerr;
+	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soerr, &slen) != 0) {
+		close(fd);
+		return (uli_net_i64_result){ 0, uli_net_errno_error() };
+	}
+	if (soerr != 0) {
+		close(fd);
+		return (uli_net_i64_result){ 0, uli_net_error_new(soerr, strerror(soerr)) };
+	}
+	fcntl(fd, F_SETFL, flags);
 	return (uli_net_i64_result){ fd, NULL };
 }
 

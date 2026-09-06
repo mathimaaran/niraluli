@@ -1,6 +1,6 @@
 id: database
 status: codegen
-subset: Tamil-0.62
+subset: Tamil-0.81
 go_inspired: |
   db, err := sql.Open("sqlite", ":memory:")
   stmt, err := db.Prepare("INSERT INTO item VALUES (?, ?)")
@@ -11,19 +11,20 @@ tamil_ebnf: |
   # no new syntax — stdlib package தரவுத்தளம் (கொணர் "தரவுத்தளம்")
 semantics: >
   Tamil-0.62 adds a shared SQL database API backed by an internal C vtable.
-  திற(driver, address) dispatches to a registered backend; SQLite is the
-  first backend and accepts "sqlite" or "sqlite3". Connections and prepared
-  statements are opaque handles. செயல் executes SQL without rows and returns
-  செயல்முடிவு (பாதித்தவை, சேர்க்கையெண்). தயாரி creates a reusable statement.
-  One-based bind functions support null, int64, float64, UTF-8 text, and byte
-  blobs. அடுத்து returns (மெய், இன்மை) for a row and (பொய், இன்மை) when done.
-  Column getters use zero-based indexes and copy text/blob results into the
-  Niraluli managed heap. All operational failures return *தரவுத்தளம்.பிழை.
-  The SQLite backend is loaded at runtime with dlopen, so compiling an Niraluli
-  program needs no sqlite3 headers or -lsqlite3; execution needs
-  libsqlite3.so.0 (or libsqlite3.so). Handles require explicit கூற்றுவிடு /
-  விடு; there are no finalizers. A connection or statement must not be used
-  concurrently by multiple இழை in this first slice.
+  திற(driver, address) dispatches to a registered backend; SQLite accepts
+  "sqlite" or "sqlite3". Tamil-0.81 adds PostgreSQL via libpq dlopen
+  ("postgres" / "postgresql"); முகவரி is a libpq DSN and placeholders are
+  $1…. Connections and prepared statements are opaque handles. செயல்
+  executes SQL without rows and returns செயல்முடிவு (பாதித்தவை, சேர்க்கையெண்).
+  தயாரி creates a reusable statement. One-based bind functions support null,
+  int64, float64, UTF-8 text, and byte blobs. அடுத்து returns (மெய், இன்மை)
+  for a row and (பொய், இன்மை) when done. Column getters use zero-based indexes
+  and copy text/blob results into the Niraluli managed heap. All operational
+  failures return *தரவுத்தளம்.பிழை. Backends are loaded at runtime with dlopen,
+  so compiling needs no sqlite3/libpq headers or -lsqlite3/-lpq; execution needs
+  the shared library. Handles require explicit கூற்றுவிடு / விடு; there are no
+  finalizers. A connection or statement must not be used concurrently by
+  multiple இழை in this slice.
 examples:
   - tamil: |
       கொணர் "தரவுத்தளம்"

@@ -1,5 +1,6 @@
-// Niraluli stdlib: தரவுத்தளம் — shared SQL API + backend vtable (Tamil-0.62).
-// Low-level bodies are compiler intrinsics. SQLite is the first backend.
+// Niraluli stdlib: தரவுத்தளம் — shared SQL API + backend vtable (Tamil-0.62/0.81).
+// Low-level bodies are compiler intrinsics. SQLite and PostgreSQL backends are
+// loaded at runtime (dlopen); no build-time -lsqlite3 / -lpq required.
 
 தொகுப்பு தரவுத்தளம்
 
@@ -16,8 +17,9 @@
     வெளி சேர்க்கையெண் முழுஎண்
 }
 
-// திற opens a database through a registered backend. Tamil-0.62 supports
-// இயக்கி "sqlite" (or "sqlite3"); முகவரி is the SQLite database path.
+// திற opens a database through a registered backend.
+// இயக்கி "sqlite" / "sqlite3" — முகவரி is a SQLite path (e.g. ":memory:").
+// இயக்கி "postgres" / "postgresql" — முகவரி is a libpq DSN; placeholders are $1… .
 வெளி செயல்பாடு திற(இயக்கி சரம், முகவரி சரம்) (இணைப்பு, *பிழை) {
     திருப்பு 0, இன்மை
 }

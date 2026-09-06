@@ -794,6 +794,38 @@ static int uli_http_redirect_code(int64_t code) {
 	return code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
 }
 
+/* Resolve a redirect Location against base URL. Absolute http(s):// kept;
+   absolute paths (/…) and relative paths join the base origin/path. */
+static const char *uli_http_resolve_location(const char *base, const char *loc) {
+	if (!loc || !*loc) return NULL;
+	if (!strncmp(loc, "http://", 7) || !strncmp(loc, "https://", 8)) return loc;
+	uli_http_url base_u;
+	if (uli_http_parse_url(base, &base_u)) return NULL;
+	char pathbuf[2048];
+	if (loc[0] == '/') {
+		if (strlen(loc) >= sizeof pathbuf) return NULL;
+		strcpy(pathbuf, loc);
+	} else {
+		const char *bp = base_u.path[0] ? base_u.path : "/";
+		const char *slash = strrchr(bp, '/');
+		size_t dir_len = slash ? (size_t)(slash - bp) + 1 : 1;
+		if (dir_len == 0) dir_len = 1;
+		if (dir_len + strlen(loc) >= sizeof pathbuf) return NULL;
+		if (!slash) {
+			pathbuf[0] = '/';
+			pathbuf[1] = '\0';
+			dir_len = 1;
+		} else {
+			memcpy(pathbuf, bp, dir_len);
+			pathbuf[dir_len] = '\0';
+		}
+		strcpy(pathbuf + dir_len, loc);
+	}
+	char *out = (char *)uli_alloc(8 + strlen(base_u.authority) + strlen(pathbuf) + 1);
+	sprintf(out, "http://%s%s", base_u.authority, pathbuf);
+	return out;
+}
+
 static void *uli_http_set_timeout(int64_t fd, int64_t timeout_ms) {
 	if (timeout_ms < 0) return uli_net_error_new(EINVAL, "invalid HTTP timeout");
 	if (timeout_ms == 0) return NULL;
@@ -825,7 +857,7 @@ static uli_http_client_result uli_http_do_ex(const char *method, const char *url
 	if (dn < 0 || (size_t)dn >= sizeof dial) {
 		return uli_http_client_fail(uli_net_error_new(EINVAL, "invalid HTTP URL"));
 	}
-	uli_net_i64_result dialed = uli_net_dial(dial);
+	uli_net_i64_result dialed = timeout_ms > 0 ? uli_net_dial_timeout(dial, timeout_ms) : uli_net_dial(dial);
 	if (dialed.err) return uli_http_client_fail(dialed.err);
 	int64_t fd = dialed.value;
 	err = uli_http_set_timeout(fd, timeout_ms);
@@ -902,9 +934,12 @@ static uli_http_client_result uli_http_do_opts(const char *method, const char *u
 		if (result.err || !uli_http_redirect_code(result.code) || max_redirects == 0) return result;
 		if (redirects >= max_redirects) return uli_http_client_fail(uli_net_error_new(ELOOP, "HTTP redirect limit exceeded"));
 		const char *location = uli_http_headers_get(result.headers, "location");
-		if (!location || !*location || strncmp(location, "http://", 7) != 0)
+		if (!location || !*location)
 			return uli_http_client_fail(uli_net_error_new(EINVAL, "unsupported HTTP redirect location"));
-		current_url = location;
+		const char *resolved = uli_http_resolve_location(current_url, location);
+		if (!resolved || strncmp(resolved, "http://", 7) != 0)
+			return uli_http_client_fail(uli_net_error_new(EINVAL, "unsupported HTTP redirect location"));
+		current_url = resolved;
 		if (result.code == 303 || ((result.code == 301 || result.code == 302) && strcasecmp(current_method, "GET") && strcasecmp(current_method, "HEAD"))) {
 			current_method = "GET";
 			current_data = NULL;

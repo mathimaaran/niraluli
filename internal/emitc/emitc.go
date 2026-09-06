@@ -103,6 +103,7 @@ type emitter struct {
 	needDB        bool // தரவுத்தளம் SQL database API (Tamil-0.62)
 	needFile      bool // கோப்பு file I/O (Tamil-0.63)
 	needTime      bool // நேரம் wall clock + duration (Tamil-0.64)
+	needTimeTimers bool // நேரம் timers/tickers (Tamil-0.79)
 	needFmt       bool // வடிவம் fmt-style formatting (Tamil-0.65)
 	needPkgVarInit bool // package-level மாறி with runtime initializers
 	needArena     bool
@@ -254,6 +255,7 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	e.writeTimeRuntime(&b)
 	e.writeFmtRuntime(&b)
 	e.writeChanRuntime(&b)
+	e.writeTimeTimerRuntime(&b)
 	e.writePanicRuntime(&b)
 	if e.needConcat {
 		e.needArena = true
@@ -373,6 +375,19 @@ func (e *emitter) emitProgram(pkgs []*check.PkgInfo) (string, error) {
 	if e.needMap && e.info != nil && len(e.info.Structs) > 0 && !e.structsDone {
 		e.writeStructForwards(&b)
 		for _, t := range topoStructTypes(e.info) {
+			e.writeStructBody(&b, t)
+		}
+		b.WriteByte('\n')
+		e.structsDone = true
+	}
+	// Tuple returns may reference named structs (e.g. *நேரம்.பிழை) even when
+	// the program never uses slices/maps — emit struct bodies before tuples.
+	if e.info != nil && len(e.info.Structs) > 0 && !e.structsDone {
+		e.writeStructForwards(&b)
+		for _, t := range topoStructTypes(e.info) {
+			if e.info.Structs[t].Schematic {
+				continue
+			}
 			e.writeStructBody(&b, t)
 		}
 		b.WriteByte('\n')
@@ -1630,6 +1645,9 @@ func (e *emitter) cTypeExpr(te ast.TypeExpr) string {
 	case *ast.FuncType:
 		e.needFunc = true
 		return "uli_fn"
+	case *ast.ChanType:
+		e.needChan = true
+		return "uli_chan *"
 	default:
 		return "void"
 	}
@@ -1751,6 +1769,17 @@ func (e *emitter) resolveTypeExpr(te ast.TypeExpr) check.Type {
 						return t
 					}
 				}
+			}
+		}
+		return check.TypeInvalid
+	case *ast.ChanType:
+		elem := e.resolveTypeExpr(te.Elem)
+		if elem == check.TypeInvalid || e.info == nil {
+			return check.TypeInvalid
+		}
+		for t, ci := range e.info.Chans {
+			if ci.Elem == elem && ci.Dir == te.Dir {
+				return t
 			}
 		}
 		return check.TypeInvalid

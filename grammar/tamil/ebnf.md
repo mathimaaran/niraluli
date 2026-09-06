@@ -2,7 +2,7 @@
 
 Notation: same as Go (`grammar/go/ebnf-notation.md`).
 Keywords: `grammar/tamil/keywords.yaml`.
-Status: **Tamil-0.77** (2026-09-05) — var groups, bitwise, int widths, generic aliases, typed fmt.
+Status: **Tamil-0.81** (2026-09-06) — stdlib polish (file/time/HTTP/Postgres).
 
 ```
 SourceFile    = PackageClause { ImportDecl } { TopLevelDecl } .
@@ -327,25 +327,29 @@ server (`கோரிக்கை` / `பதிலளிப்பு` / `கை�
 `சேவைஒன்று` / `கேட்டுசேவை` / `வழிசேவை`), and client (`பதில்`, `பெறு` /
 `பதிவிடு` / `கோரு` / `கோருவிருப்பம்`). See `constructs/http.yaml`.
 
-## SQL databases (Tamil-0.62)
+## SQL databases (Tamil-0.62 / 0.81)
 
 No new syntax. Stdlib package `தரவுத்தளம்` (`கொணர் "தரவுத்தளம்"`) provides
 a shared connection/prepared-statement API over an internal C backend vtable.
-SQLite (`"sqlite"` / `"sqlite3"`) is the first backend. Typed bind and column
-functions cover null, integer, float, UTF-8 text, and byte blobs. See
-`constructs/database.yaml`.
+SQLite (`"sqlite"` / `"sqlite3"`) and PostgreSQL (`"postgres"` / `"postgresql"`,
+libpq via dlopen) are supported. Postgres placeholders are `$1`…. Typed bind
+and column functions cover null, integer, float, UTF-8 text, and byte blobs.
+See `constructs/database.yaml`.
 
-## File I/O (Tamil-0.63)
+## File I/O (Tamil-0.63 / 0.78)
 
 No new syntax. Stdlib package `கோப்பு` (`கொணர் "கோப்பு"`): opaque `கை`
-handles, `திற` / `உருவாக்கு` / `படி` / `எழுது` / `விடு`, plus whole-file
-`படிஅனை` / `எழுதுஅனை`. See `constructs/file.yaml`.
+handles, `திற` / `உருவாக்கு` / `படி` / `எழுது` / `விடு`, whole-file
+`படிஅனை` / `எழுதுஅனை`, plus Tamil-0.78 `தேடு` / `அடைவுஉருவாக்கு` /
+`அடைவுபடி` / `அனுமதிமாற்று`. See `constructs/file.yaml`.
 
-## Time (Tamil-0.64)
+## Time (Tamil-0.64 / 0.79)
 
 No new syntax. Stdlib package `நேரம்` (`கொணர் "நேரம்"`): `காலம்` /
 `தருணம்`, `இப்போ` / `உறங்கு` / `கழித்தது`, Unix helpers, RFC3339
-`சரம்ஆக்கு`, and duration unit constructors. See `constructs/time.yaml`.
+`சரம்ஆக்கு`, duration unit constructors, plus Tamil-0.79 `பகு` /
+`சரம்ஆக்குஇடம்` / `பின்னர்` / `துடிப்பு` / `நிறுத்து`.
+See `constructs/time.yaml`.
 
 ## Formatting (Tamil-0.65)
 

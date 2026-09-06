@@ -13,20 +13,21 @@ Update when a subset ships (strike or move items) or when a construct card recor
 | Interfaces | Only if earned (e.g. Go-style `Handler`) | method.yaml |
 | Interface constraints on generics | After interfaces | generics.yaml |
 
-Shipped: 0.11–0.77 (through typed fmt verbs on constant formats).
+Shipped: 0.11–0.81 (through stdlib polish: file seek/dirs, time timers/parse, HTTP dial/relative redirects, Postgres).
 
 ## Backlog leftovers (pre-NASM optional; keep out of critical path)
 
 | Item | Notes | Source |
 |------|--------|--------|
-| Dial / DNS timeouts | HTTP `நேரமுடிவு` currently covers send/receive sockets only | http.yaml |
-| Relative HTTP redirects | Absolute `http://` only today | http.yaml |
+| ~~Dial / DNS timeouts~~ | Tamil-0.80 `நேரமுடிவு` covers dial connect + I/O (DNS resolve still parks unbound) | http.yaml |
+| ~~Relative HTTP redirects~~ | Tamil-0.80 absolute + relative `Location` | http.yaml |
 | HTTPS / TLS | Explicitly out of scope for 0.61 | http.yaml / net.yaml |
-| PostgreSQL / MySQL backends | Implement the Tamil-0.62 internal DB vtable | database.yaml |
+| ~~PostgreSQL backend~~ | Tamil-0.81 libpq via dlopen (`postgres` / `postgresql`) | database.yaml |
+| MySQL backend | Same vtable; not shipped | database.yaml |
 | Database pooling | Connection handles are single connections today | database.yaml |
 | Public database driver ABI | Internal C vtable is not a third-party plugin API | database.yaml |
-| File seek / directories / chmod | Tamil-0.63 is open/read/write/close + whole-file helpers | file.yaml |
-| Timers / tickers / parse / locations | Tamil-0.64 is now/sleep/since + RFC3339 UTC format | time.yaml |
+| ~~File seek / directories / chmod~~ | Tamil-0.78 `தேடு` / `அடைவுஉருவாக்கு` / `அடைவுபடி` / `அனுமதிமாற்று` | file.yaml |
+| ~~Timers / tickers / parse / locations~~ | Tamil-0.79 `பின்னர்` / `துடிப்பு` / `பகு` / `சரம்ஆக்குஇடம்` | time.yaml |
 | ~~Typed fmt verbs on constant formats~~ | Tamil-0.77 `%d/%t/%g/%v` | fmt.yaml |
 | Interfaces | Only if earned | method.yaml |
 

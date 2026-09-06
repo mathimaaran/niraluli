@@ -1,6 +1,6 @@
 id: http
 status: codegen
-subset: Tamil-0.61
+subset: Tamil-0.80
 go_inspired: |
   resp, err := http.Post("http://127.0.0.1:8080/echo", "text/plain", body)
   w.Header().Set("X-Echo", "ok")
@@ -16,15 +16,18 @@ semantics: >
   last-wins, + means space, and percent escapes are decoded.
   Tamil-0.61 adds கோருவிருப்பம் with a per-operation socket timeout and
   an opt-in maximum redirect count.
+  Tamil-0.80 widens நேரமுடிவு to cover dial/connect (non-blocking connect +
+  poll) as well as send/receive; DNS resolve still parks but is not separately
+  capped. Redirect Location may be absolute http:// or relative (/path or
+  path-relative) against the current request URL.
   பதில் has குறியீடு, விளக்கம் (status text; நிலை is the bool keyword),
   தலைப்புகள், and உடல். Client APIs: பெறு(url), பதிவிடு(url, contentType,
   body), and கோரு(method, url, headers, body) return (பதில், *வலை.பிழை).
   Only http:// host[:port]/path][?query] is supported (default port 80,
   fragment stripped, IPv4 via வலை). HTTP/1.1 chunked responses are decoded.
   HTTPS, TLS, and pooling are out of scope. Redirects are disabled unless
-  அதிகதிருப்புகள் is positive; supported absolute http:// redirects are
-  301, 302, 303, 307, and 308. நேரமுடிவு is milliseconds; zero disables
-  send/receive timeouts (DNS and connection establishment are not timed).
+  அதிகதிருப்புகள் is positive; supported redirects are 301, 302, 303, 307,
+  and 308. நேரமுடிவு is milliseconds; zero disables dial and I/O timeouts.
   Response writers
   எழுதுதலைப்புகள் / எழுதுசரந்தலைப்புகள் take an optional header map while
   உள்ளடக்கம் remains authoritative Content-Type. User headers may not set
@@ -56,3 +59,4 @@ notes:
   - "Tamil-0.58: pass *வழிப்படுத்தி to பதிவு / வழிசேவைஒன்று / வழிசேவை."
   - "Tamil-0.59: கோரிக்கை.வினாக்கள் query map, strict HTTP/1.0–1.1 parsing, and chunked client responses."
   - "Tamil-0.61: கோருவிருப்பம் timeout + bounded absolute HTTP redirects."
+  - "Tamil-0.80: dial/connect timeout + relative redirect Location resolution."
