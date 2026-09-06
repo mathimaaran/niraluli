@@ -13,7 +13,7 @@
   <section class="hero">
     <p class="eyebrow">API reference</p>
     <h1>Standard library</h1>
-    <p class="lead">Compiler-provided v0.77 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, <code>தரவுத்தளம்</code> for SQL databases through a shared backend vtable, <code>கோப்பு</code> for POSIX file I/O, <code>நேரம்</code> for wall-clock time and durations, and <code>வடிவம்</code> for fmt-style string formatting (variadic <code>...சரம்</code>).</p>
+    <p class="lead">Compiler-provided v0.81 APIs: <code>வலை</code> for IPv4 TCP/UDP, <code>பரிமாற்றம்</code> for synchronous HTTP, <code>தரவுத்தளம்</code> for SQL (SQLite and PostgreSQL) through a shared backend vtable, <code>கோப்பு</code> for POSIX file I/O (including seek/dirs), <code>நேரம்</code> for wall-clock time, durations, timers, and <code>வடிவம்</code> for fmt-style string formatting (variadic <code>...சரம்</code>).</p>
   </section>
 
   <div class="toc">
@@ -213,7 +213,7 @@ n, _ := வலை.படி(இ, இடம்)
     நேரமுடிவு முழுஎண்
     அதிகதிருப்புகள் முழுஎண்
 }</code></pre>
-    <p><code>நேரமுடிவு</code> is milliseconds for send/receive socket operations; zero disables it. <code>அதிகதிருப்புகள்</code> is the opt-in redirect limit; zero disables redirects.</p>
+    <p><code>நேரமுடிவு</code> is milliseconds covering dial/connect and send/receive; zero disables it. DNS resolve is still unbounded. <code>அதிகதிருப்புகள்</code> is the opt-in redirect limit; zero disables redirects.</p>
   </div>
 
   <h2 id="http-server">HTTP server API</h2>
@@ -264,7 +264,7 @@ n, _ := வலை.படி(இ, இடம்)
   <div class="api">
     <h3><code>கோருவிருப்பம்</code> — request with options</h3>
     <code class="api-signature">கோருவிருப்பம்(முறைமை, முகவரி, தலைப்புகள், உடல், விருப்பம்) (பதில், *வலை.பிழை)</code>
-    <p>Enables bounded redirects and send/receive timeout behavior.</p>
+    <p>Enables bounded redirects and timeout covering dial/connect plus send/receive.</p>
   </div>
 
   <pre><code>தலை := அகராதி[சரம்]சரம்{"X-Uli": "நிரலுளி"}
@@ -291,17 +291,18 @@ n, _ := வலை.படி(இ, இடம்)
     <li>Headers are exposed with lowercase names; repeated headers are last-wins.</li>
     <li>User response/request maps cannot override <code>Host</code>, <code>Content-Length</code>, <code>Connection</code>, <code>Transfer-Encoding</code>, or <code>Content-Type</code>.</li>
     <li>Header names/values reject CR, LF, and NUL injection.</li>
-    <li>Redirects support absolute <code>http://</code> locations for 301, 302, 303, 307, and 308. Relative redirects and HTTPS are rejected.</li>
+    <li>Redirects support absolute <code>http://</code> and relative <code>Location</code> values for 301, 302, 303, 307, and 308. HTTPS is rejected.</li>
     <li>301/302 from non-GET/HEAD and 303 convert the next request to GET; 307/308 preserve method and body.</li>
-    <li>Timeout currently covers socket send/receive only, not DNS resolution or TCP connection establishment.</li>
+    <li>With <code>நேரமுடிவு</code>, timeout covers TCP dial/connect and socket send/receive. DNS resolution is still unbounded.</li>
     <li>No TLS, connection pooling, cookies, compression, proxy support, or streaming body API.</li>
   </ul>
 
   <h2 id="database"><code>தரவுத்தளம்</code> — SQL database API</h2>
-  <p>The database package presents one Tamil API over an internal C function-pointer table (vtable). SQLite is the first backend; future first-party PostgreSQL/MySQL backends can implement the same operation set without changing Niraluli programs.</p>
+  <p>The database package presents one Tamil API over an internal C function-pointer table (vtable). SQLite and PostgreSQL are supported; a future MySQL backend can implement the same operation set without changing Niraluli programs that stay within portable SQL.</p>
   <pre><code>கொணர் "தரவுத்தளம்"
 
 இணைப்பு, பிழை := தரவுத்தளம்.திற("sqlite", ":memory:")
+// Postgres: தரவுத்தளம்.திற("postgres", "host=127.0.0.1 dbname=uli user=uli")
 எனில் பிழை != இன்மை {
     பதிப்பி(பிழை.செய்தி)
     திருப்பு
@@ -319,7 +320,7 @@ n, _ := வலை.படி(இ, இடம்)
     <code class="api-signature">திற(இயக்கி, முகவரி) (இணைப்பு, *பிழை)</code><br>
     <code class="api-signature">செயல்(இணைப்பு, வினா) (செயல்முடிவு, *பிழை)</code><br>
     <code class="api-signature">விடு(இணைப்பு) *பிழை</code>
-    <p>v0.62 accepts driver names <code>"sqlite"</code> and <code>"sqlite3"</code>. The address is a SQLite path or <code>":memory:"</code>. <code>செயல்</code> is for SQL that does not return rows and reports affected rows plus last inserted row ID.</p>
+    <p>Driver names: <code>"sqlite"</code> / <code>"sqlite3"</code> (path or <code>":memory:"</code>) and <code>"postgres"</code> / <code>"postgresql"</code> (libpq DSN). Placeholders are <code>?</code> for SQLite and <code>$1</code>… for Postgres. <code>செயல்</code> is for SQL that does not return rows and reports affected rows plus last inserted row ID (SQLite) or OID-style insert id when available.</p>
   </div>
   <div class="api">
     <h3>Prepared statements and binds</h3>
@@ -329,7 +330,7 @@ n, _ := வலை.படி(இ, இடம்)
     <code class="api-signature">மிதவைப்பிணை(கூற்று, இடம், மதிப்பு) *பிழை</code><br>
     <code class="api-signature">சரம்பிணை(கூற்று, இடம், மதிப்பு) *பிழை</code><br>
     <code class="api-signature">இருமிப்பிணை(கூற்று, இடம், மதிப்பு) *பிழை</code>
-    <p>Bind positions are <strong>one-based</strong>. Text and blob inputs use SQLite transient binding, so SQLite copies them before the call returns.</p>
+    <p>Bind positions are <strong>one-based</strong>. Text and blob inputs are copied by the backend before the call returns.</p>
   </div>
   <div class="api">
     <h3>Stepping and columns</h3>
@@ -375,14 +376,14 @@ _, பிழை = தரவுத்தளம்.அடுத்து(கூற
 
   <h2 id="database-lifecycle">Database architecture and limitations</h2>
   <ul>
-    <li><strong>Runtime-loaded SQLite:</strong> generated C uses <code>dlopen</code>/<code>dlsym</code>. Building needs no <code>sqlite3.h</code> or <code>-lsqlite3</code>; the linker uses <code>-ldl</code>. Running needs <code>libsqlite3.so.0</code> (or <code>libsqlite3.so</code>).</li>
+    <li><strong>Runtime-loaded backends:</strong> generated C uses <code>dlopen</code>/<code>dlsym</code>. Building needs no SQL headers or <code>-lsqlite3</code>/<code>-lpq</code>; the linker uses <code>-ldl</code>. Running needs <code>libsqlite3.so.0</code> and/or <code>libpq.so.5</code> depending on the driver.</li>
     <li><strong>Opaque handles:</strong> <code>இணைப்பு</code> and <code>கூற்று</code> are typed as <code>முழுஎண்</code> in Niraluli but must only be used with the database package APIs.</li>
     <li><strong>Explicit lifetime:</strong> finalize every statement with <code>கூற்றுவிடு</code> before closing its connection with <code>விடு</code>. There are no database finalizers.</li>
-    <li><strong>No concurrent handle sharing:</strong> do not use one connection or statement from multiple <code>இழை</code> in v0.62. Separate handles are allowed.</li>
+    <li><strong>No concurrent handle sharing:</strong> do not use one connection or statement from multiple <code>இழை</code>. Separate handles are allowed.</li>
     <li><strong>Transactions:</strong> issue <code>BEGIN</code>, <code>COMMIT</code>, and <code>ROLLBACK</code> through <code>செயல்</code>.</li>
-    <li><strong>Not included:</strong> pooling, ORM, migrations, reflection-based scan, public third-party drivers, PostgreSQL, and MySQL.</li>
+    <li><strong>Not included:</strong> pooling, ORM, migrations, reflection-based scan, public third-party drivers, and MySQL.</li>
     <li><strong>Vtable scope:</strong> it is an internal backend contract, not a stable C FFI or plugin ABI.</li>
-    <li><strong>SQL portability:</strong> the Niraluli API is shared, but SQL dialect and placeholder syntax may differ between future backends.</li>
+    <li><strong>SQL portability:</strong> the Niraluli API is shared, but SQL dialect and placeholder syntax differ (<code>?</code> vs <code>$1</code>).</li>
   </ul>
 
   <h2 id="database-examples">Database examples in the corpus</h2>
@@ -395,6 +396,10 @@ _, பிழை = தரவுத்தளம்.அடுத்து(கூற
           <td>File-backed SQLite demo: create table, bind int/text/float/blob/null, query columns, print an unsupported-driver error.</td>
         </tr>
         <tr>
+          <td><code>corpus/tamil/தரவுத்தளம்_postgres/</code></td>
+          <td>PostgreSQL backend sample (skips when libpq or DSN is unavailable).</td>
+        </tr>
+        <tr>
           <td><code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/</code></td>
           <td>Full-stack employee app: Niraluli REST API + persistent SQLite (<code>build/ஊழியர்கள்.db</code>) + React/Vite UI with Tamil labels and data. Follow <code>SETUP.md</code>.</td>
         </tr>
@@ -402,14 +407,15 @@ _, பிழை = தரவுத்தளம்.அடுத்து(கூற
     </table>
   </div>
   <pre><code>go run ./cmd/uli run corpus/tamil/தரவுத்தளம்/
+# Optional Postgres: go run ./cmd/uli run corpus/tamil/தரவுத்தளம்_postgres/
 # Full-stack: see corpus/tamil/ஊழியர்_முழுஅடுக்கு/SETUP.md</code></pre>
   <div class="callout">
-    <strong>Install SQLite at runtime</strong>
-    On Debian/Ubuntu: <code>sudo apt install libsqlite3-0</code>. Confirm with <code>ldconfig -p | grep libsqlite3</code>.
+    <strong>Install SQL runtimes</strong>
+    On Debian/Ubuntu: <code>sudo apt install libsqlite3-0</code> (and optionally <code>libpq5</code>). Confirm with <code>ldconfig -p | grep -E 'libsqlite3|libpq'</code>.
   </div>
 
   <h2 id="file"><code>கோப்பு</code> — File I/O API</h2>
-  <p>POSIX file open/read/write/close on Linux. Opaque <code>கை</code> is a file descriptor typed as <code>முழுஎண்</code>; use it only with these APIs.</p>
+  <p>POSIX file open/read/write/close on Linux, plus seek, directories, and chmod (Tamil-0.78). Opaque <code>கை</code> is a file descriptor typed as <code>முழுஎண்</code>; use it only with these APIs.</p>
   <pre><code>கொணர் "கோப்பு"
 
 ப := கோப்பு.எழுதுஅனை("demo.txt", []இருமி8("வணக்கம்"))
@@ -417,7 +423,8 @@ _, பிழை = தரவுத்தளம்.அடுத்து(கூற
 க, ப3 := கோப்பு.திற("demo.txt")
 இடம் := ஆக்கு([]இருமி8, 64)
 n, ப4 := கோப்பு.படி(க, இடம்)
-ப5 := கோப்பு.விடு(க)</code></pre>
+_, ப5 := கோப்பு.தேடு(க, 0, கோப்பு.தேடுதொடக்கம்)
+ப6 := கோப்பு.விடு(க)</code></pre>
 
   <div class="table-wrap">
     <table>
@@ -429,13 +436,17 @@ n, ப4 := கோப்பு.படி(க, இடம்)
         <tr><td><code>எழுது(கை, []இருமி8)</code></td><td>Write buffer bytes; returns bytes written.</td></tr>
         <tr><td><code>விடு(கை)</code></td><td>Close the handle.</td></tr>
         <tr><td><code>படிஅனை</code> / <code>எழுதுஅனை</code></td><td>Whole-file helpers (open, transfer, close).</td></tr>
+        <tr><td><code>தேடு(கை, இடம், எங்கிருந்து)</code></td><td>Seek; whence consts <code>தேடுதொடக்கம்</code>/<code>தேடுநடப்பு</code>/<code>தேடுமுடிவு</code>.</td></tr>
+        <tr><td><code>அடைவுஉருவாக்கு(பாதை, அனுமதி)</code></td><td>Create a directory.</td></tr>
+        <tr><td><code>அடைவுபடி(பாதை)</code></td><td>List entry names as <code>[]சரம்</code> (no <code>.</code>/<code>..</code>).</td></tr>
+        <tr><td><code>அனுமதிமாற்று(பாதை, அனுமதி)</code></td><td>chmod.</td></tr>
       </tbody>
     </table>
   </div>
   <ul>
     <li><strong>Errors:</strong> <code>*கோப்பு.பிழை</code> with <code>குறியீடு</code> and <code>செய்தி</code>.</li>
     <li><strong>Blocking:</strong> I/O parks the calling thread for GC, same pattern as network.</li>
-    <li><strong>Not included:</strong> seek, directories, chmod, mmap, async I/O.</li>
+    <li><strong>Not included:</strong> mmap, async I/O, recursive walk helpers.</li>
   </ul>
 
   <h2 id="file-examples">File examples in the corpus</h2>
@@ -447,19 +458,28 @@ n, ப4 := கோப்பு.படி(க, இடம்)
           <td><code>corpus/tamil/கோப்பு/</code></td>
           <td>Whole-file write/read, create/write/close, open/read, and missing-file error message.</td>
         </tr>
+        <tr>
+          <td><code>corpus/tamil/கோப்பு_தேடல்/</code></td>
+          <td>Seek, mkdir, readdir, and chmod.</td>
+        </tr>
       </tbody>
     </table>
   </div>
-  <pre><code>go run ./cmd/uli run corpus/tamil/கோப்பு/</code></pre>
+  <pre><code>go run ./cmd/uli run corpus/tamil/கோப்பு/
+go run ./cmd/uli run corpus/tamil/கோப்பு_தேடல்/</code></pre>
 
   <h2 id="time"><code>நேரம்</code> — Time API</h2>
-  <p>Wall-clock time and durations on Linux. <code>காலம்</code> is nanoseconds; <code>தருணம்</code> is a UTC Unix-nanosecond instant.</p>
+  <p>Wall-clock time and durations on Linux. <code>காலம்</code> is nanoseconds; <code>தருணம்</code> is a UTC Unix-nanosecond instant. Tamil-0.79 adds parse, locations, and channel timers.</p>
   <pre><code>கொணர் "நேரம்"
 
 முன் := நேரம்.இப்போ()
 நேரம்.உறங்கு(நேரம்.மில்லிவினாடி(20))
 கழிவு := நேரம்.கழித்தது(முன்)
-உரை := நேரம்.சரம்ஆக்கு(நேரம்.இப்போ())</code></pre>
+உரை := நேரம்.சரம்ஆக்கு(நேரம்.இப்போ())
+த, ப := நேரம்.பகு("2026-09-06T12:00:00Z")
+ச := நேரம்.பின்னர்(நேரம்.மில்லிவினாடி(50))
+<-ச
+நேரம்.நிறுத்து(ச)</code></pre>
 
   <div class="table-wrap">
     <table>
@@ -471,12 +491,17 @@ n, ப4 := கோப்பு.படி(க, இடம்)
         <tr><td><code>கழித்தது(தருணம்)</code></td><td>Elapsed <code>காலம்</code> since an instant.</td></tr>
         <tr><td><code>யூனிக்ஸ்</code> / <code>யூனிக்ஸ்நானோ</code></td><td>Unix seconds or nanoseconds from a <code>தருணம்</code>.</td></tr>
         <tr><td><code>சரம்ஆக்கு(தருணம்)</code></td><td>RFC3339 UTC with nanoseconds (…Z).</td></tr>
+        <tr><td><code>சரம்ஆக்குஇடம்(தருணம், இடம்)</code></td><td>Format in <code>"UTC"</code> or <code>"Local"</code> (<code>நேரம்.UTC</code> / <code>நேரம்.உள்ளூர்</code>).</td></tr>
+        <tr><td><code>பகு(உரை)</code></td><td>Parse RFC3339; returns <code>(தருணம், *நேரம்.பிழை)</code>.</td></tr>
+        <tr><td><code>பின்னர்(காலம்)</code></td><td>Buffered <code>தடம் தருணம்</code> that receives once after the duration.</td></tr>
+        <tr><td><code>துடிப்பு(காலம்)</code></td><td>Buffered ticker channel that receives periodically.</td></tr>
+        <tr><td><code>நிறுத்து(தடம்)</code></td><td>Stop a timer/ticker; <code>மெய்</code> if a future send was prevented.</td></tr>
       </tbody>
     </table>
   </div>
   <ul>
     <li><strong>Comparisons:</strong> ordered compares on <code>காலம்</code>/<code>தருணம்</code> need <code>முழுஎண்(...)</code> conversion.</li>
-    <li><strong>Not included:</strong> timers, tickers, locations/time zones beyond UTC formatting, parse.</li>
+    <li><strong>Not included:</strong> arbitrary time-zone databases, timer <code>Reset</code>, calendar arithmetic.</li>
   </ul>
 
   <h2 id="time-examples">Time examples in the corpus</h2>
@@ -488,16 +513,22 @@ n, ப4 := கோப்பு.படி(க, இடம்)
           <td><code>corpus/tamil/நேரம்/</code></td>
           <td>Sleep/elapsed check, Unix instant, RFC3339 format length, duration unit helpers.</td>
         </tr>
+        <tr>
+          <td><code>corpus/tamil/நேரம்_மேம்படு/</code></td>
+          <td>Parse, location format, timers, and tickers.</td>
+        </tr>
       </tbody>
     </table>
   </div>
-  <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/</code></pre>
+  <pre><code>go run ./cmd/uli run corpus/tamil/நேரம்/
+go run ./cmd/uli run corpus/tamil/நேரம்_மேம்படு/</code></pre>
 
   <h2 id="fmt"><code>வடிவம்</code> — Formatting API</h2>
-  <p>fmt-style string formatting. Convert scalars with <code>*உரை</code>, then substitute <code>%s</code> placeholders. <code>வடிவமை</code> is variadic (<code>...சரம்</code>).</p>
+  <p>fmt-style string formatting. Convert scalars with <code>*உரை</code>, or use typed verbs on a <strong>constant</strong> format string (Tamil-0.77). <code>வடிவமை</code> is variadic (<code>...சரம்</code> when the format is not constant).</p>
   <pre><code>கொணர் "வடிவம்"
 
 பதிப்பி(வடிவம்.வடிவமை("எண்=%s நிலை=%s", வடிவம்.எண்உரை(42), வடிவம்.நிலைஉரை(மெய்)))
+பதிப்பி(வடிவம்.வடிவமை("%d %t %g", 42, மெய், 3.14))
 பதிப்பி(வடிவம்.இணை([]சரம்{"அ", "ஆ"}, "-"))</code></pre>
 
   <div class="table-wrap">
@@ -505,14 +536,14 @@ n, ப4 := கோப்பு.படி(க, இடம்)
       <thead><tr><th>API</th><th>Role</th></tr></thead>
       <tbody>
         <tr><td><code>எண்உரை</code> / <code>மிதவைஉரை</code> / <code>நிலைஉரை</code></td><td>Convert a scalar to <code>சரம்</code>.</td></tr>
-        <tr><td><code>வடிவமை(வார்ப்பு, மதிப்புகள் ...சரம்)</code></td><td>Replace <code>%s</code> in order; <code>%%</code> is literal <code>%</code>; missing → <code>%!s(MISSING)</code>.</td></tr>
+        <tr><td><code>வடிவமை(வார்ப்பு, …)</code></td><td>Non-constant format: <code>%s</code>/<code>%%</code> over <code>...சரம்</code>. Constant format: also <code>%d</code>/<code>%t</code>/<code>%g</code>/<code>%v</code>.</td></tr>
         <tr><td><code>இணை(பகுதிகள், பிரிப்பான்)</code></td><td>Join strings (like <code>strings.Join</code>).</td></tr>
       </tbody>
     </table>
   </div>
   <ul>
-    <li><strong>Language:</strong> Tamil-0.66 variadics enable <code>...சரம்</code> without fixed-arity wrappers.</li>
-    <li><strong>Not included:</strong> width/precision, <code>%d</code>/<code>%g</code> verbs, or writer Printf.</li>
+    <li><strong>Language:</strong> Tamil-0.66 variadics enable <code>...சரம்</code>; Tamil-0.77 typed verbs require a constant format literal.</li>
+    <li><strong>Not included:</strong> width/precision flags, or writer Printf.</li>
   </ul>
 
   <h2 id="fmt-examples">Formatting examples in the corpus</h2>
@@ -522,7 +553,7 @@ n, ப4 := கோப்பு.படி(க, இடம்)
       <tbody>
         <tr>
           <td><code>corpus/tamil/வடிவமைப்பு/</code></td>
-          <td>Named args, scalar conversion, <code>%%</code>, join, and missing-arg marker.</td>
+          <td>Named args, scalar conversion, <code>%%</code>, join, missing-arg marker, and typed verbs on constant formats.</td>
         </tr>
       </tbody>
     </table>

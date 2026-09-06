@@ -23,7 +23,7 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `வலை_வாடிக்கையாளர்_பிழை/` | Tamil-0.57 | HTTPS/URL/reserved-header errors |
 | `வலை_திருப்பு/` | Tamil-0.80 | relative HTTP redirect + timeout options |
 | `வலை_நேரமுடிவு/` | Tamil-0.80 | HTTP dial/connect timeout |
-| `தகவல்_வலை/` | Tamil-0.61 | IPv4 UDP loopback datagrams |
+| `தகவல்_வலை/` | Tamil-0.61 | IPv4 UDP loopback (errors checked; skips when SOCK_DGRAM denied) |
 | `தரவுத்தளம்/` | Tamil-0.62 | shared SQL vtable + SQLite prepared statements |
 | `தரவுத்தளம்_postgres/` | Tamil-0.81 | PostgreSQL backend (skips if libpq/DSN missing) |
 | `ஊழியர்_முழுஅடுக்கு/` | Tamil-0.62 | React employee grid + Niraluli REST API + Tamil SQLite (`SETUP.md`) |
@@ -41,7 +41,6 @@ Corpus programs are part of the frozen snapshot; treat changes as subset bumps u
 | `இருமியியக்கம்.uli` | Tamil-0.74 | bitwise/shifts and iota flags |
 | `முழுஅகலம்.uli` | Tamil-0.75 | integer widths |
 | `பொதுவகை_மாற்று.uli` | Tamil-0.76 | generic type aliases |
-| `வடிவமைப்பு/` | Tamil-0.66/0.77 | fmt `%s` and typed verbs |
 | `செயல்பாடு_புலம்.uli` | Tamil-0.58 | function values in struct and slice fields |
 | `குவியல்.uli` | Tamil-0.60 | indexed conservative GC + flattened string concat |
 

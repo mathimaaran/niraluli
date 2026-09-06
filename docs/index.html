@@ -11,25 +11,26 @@
 <body>
 <main id="main-content">
   <section class="hero">
-    <p class="eyebrow">Developer reference · v0.77</p>
+    <p class="eyebrow">Developer reference · v0.81</p>
     <h1>Niraluli <span lang="ta">நிரலுளி</span></h1>
     <p class="lead">A Go-inspired programming language with semantic Tamil keywords, a Go-hosted compiler, and a C/Linux backend.</p>
     <p><span lang="ta">நிரலுளி</span> joins <span lang="ta">நிரல்</span> (program) and <span lang="ta">உளி</span> (chisel): a tool for carving programs.</p>
-    <p><span class="pill">Experimental</span><span class="pill">UTF-8</span><span class="pill">Linux</span><span class="pill">C backend</span><span class="pill">SQL / SQLite</span><span class="pill">Files</span><span class="pill">Time</span><span class="pill">Formatting</span><span class="pill">Apache-2.0</span></p>
+    <p><span class="pill">Experimental</span><span class="pill">UTF-8</span><span class="pill">Linux</span><span class="pill">C backend</span><span class="pill">SQLite / Postgres</span><span class="pill">Files</span><span class="pill">Time</span><span class="pill">Formatting</span><span class="pill">Apache-2.0</span></p>
   </section>
 
   <div class="callout warning">
     <strong>Project status</strong>
-    Niraluli is an experimental research compiler, not a production language. v0.77 is implemented end to end on Linux through generated C. The planned native NASM backend has not started. Licensed under <a href="misc.html#license">Apache License 2.0</a>.
+    Niraluli is an experimental research compiler, not a production language. v0.81 is implemented end to end on Linux through generated C. The planned native NASM backend has not started. Licensed under <a href="misc.html#license">Apache License 2.0</a>.
   </div>
 
-  <h2 id="whats-new">What is new in v0.77</h2>
+  <h2 id="whats-new">What is new in v0.81</h2>
   <ul>
-    <li><strong>0.73–0.75:</strong> <code>மாறி ( … )</code> groups, bitwise/shifts (<code>1 &lt;&lt; iota</code>), integer widths.</li>
-    <li><strong>0.76:</strong> generic type aliases (<code>வகை வெக்டர்[யா] = []யா</code>).</li>
-    <li><strong>0.77:</strong> typed <code>வடிவமை</code> verbs <code>%d</code>/<code>%t</code>/<code>%g</code>/<code>%v</code> on constant formats.</li>
+    <li><strong>0.78:</strong> <code>கோப்பு</code> seek, mkdir, readdir, chmod.</li>
+    <li><strong>0.79:</strong> <code>நேரம்</code> RFC3339 parse, UTC/Local format, timers/tickers.</li>
+    <li><strong>0.80:</strong> HTTP dial/connect timeout and relative redirect <code>Location</code>.</li>
+    <li><strong>0.81:</strong> PostgreSQL backend for <code>தரவுத்தளம்</code> (libpq via <code>dlopen</code>).</li>
   </ul>
-  <p>Prior highlight: generic methods in v0.72.</p>
+  <p>Prior language polish: 0.73–0.77 (var groups, bitwise, widths, generic aliases, typed fmt verbs).</p>
 
   <h2 id="documentation">Documentation map</h2>
   <div class="card-grid">

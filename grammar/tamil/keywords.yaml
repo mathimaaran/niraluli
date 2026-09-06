@@ -1,13 +1,13 @@
 # Tamil keyword glossary
 
 status: active
-subset: Tamil-0.77
+subset: Tamil-0.81
 style: semantic Tamil
 note: >
-  Tamil-0 remains frozen as the base. Tamil-0.77 adds var groups, bitwise ops,
-  integer widths, generic aliases, and typed fmt verbs.
-  Further breaking changes need a subset bump and a dated note in
-  notes/design-decisions.md.
+  Tamil-0 remains frozen as the base. Tamil-0.81 extends the C-backend stdlib
+  (file seek/dirs, time timers/parse, HTTP dial/relative redirects, Postgres)
+  after 0.73–0.77 language polish. Further breaking changes need a subset bump
+  and a dated note in notes/design-decisions.md.
 
 keywords:
   - go: package

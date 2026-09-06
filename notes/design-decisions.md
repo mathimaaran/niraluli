@@ -487,10 +487,11 @@ failures return `*தரவுத்தளம்.பிழை`.
 The generated runtime uses `dlopen` / `dlsym` for `libsqlite3.so.0` (falling
 back to `libsqlite3.so`). Consequently Niraluli compilation does not require
 SQLite headers or `-lsqlite3`; the shared library is required when a SQLite
-program runs. The vtable isolates engine operations so future PostgreSQL or
-MySQL first-party backends can share the Tamil API. Tamil-0.62 deliberately
-excludes pooling, concurrent use of one handle, ORM/reflection, migrations,
-and a third-party driver registry.
+program runs. Tamil-0.81 adds a PostgreSQL backend the same way (`libpq.so.5`,
+drivers `"postgres"` / `"postgresql"`, `$1` placeholders). The vtable isolates
+engine operations so a future MySQL first-party backend can share the Tamil API.
+Tamil-0.62 deliberately excludes pooling, concurrent use of one handle,
+ORM/reflection, migrations, and a third-party driver registry.
 
 ## Tamil-0.63 (2026-08-22)
 

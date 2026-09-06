@@ -113,7 +113,7 @@
 }</code></pre>
   <p><code>அலறு</code> accepts <code>சரம்</code>, <code>முழுஎண்</code>, <code>மிதவைஎண்</code>, <code>நிலை</code>, <code>இருமி8</code>, or <code>இருமி32</code>; primitive values are stringified. The panic state is per thread.</p>
   <p><code>மீள்()</code> only stops an active panic when called from deferred execution. It returns the panic string. Otherwise it returns <code>""</code>. An uncaught panic prints Niraluli function frames and aborts the process.</p>
-  <p>There is no interface/any panic payload in v0.77.</p>
+  <p>There is no interface/any panic payload in v0.81.</p>
 
   <h2 id="heap">Managed heap and garbage collection</h2>
   <p>The C backend uses a malloc-backed stop-the-world conservative mark/sweep collector. Allocation is implicit for strings, slice/map growth, closures, channels, defer thunks, networking buffers, and runtime objects.</p>
@@ -147,7 +147,7 @@
   <h2 id="runtime-limits">Runtime guarantees and limitations</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Area</th><th>Current v0.77 behavior</th></tr></thead>
+      <thead><tr><th>Area</th><th>Current v0.81 behavior</th></tr></thead>
       <tbody>
         <tr><td>Scheduling</td><td>One pthread per <code>இழை</code>; no work-stealing scheduler.</td></tr>
         <tr><td>Memory</td><td>Automatic conservative GC; no explicit free in the language.</td></tr>

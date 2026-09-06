@@ -157,6 +157,10 @@
         <tr><td>0.75</td><td>Integer widths <code>முழுஎண்8…64</code> / <code>நேர்முழு8…64</code>.</td></tr>
         <tr><td>0.76</td><td>Generic type aliases (<code>வகை T[யா] = …</code>).</td></tr>
         <tr><td>0.77</td><td>Typed fmt verbs <code>%d</code>/<code>%t</code>/<code>%g</code>/<code>%v</code> on constant <code>வடிவமை</code> formats.</td></tr>
+        <tr><td>0.78</td><td>File seek, mkdir, readdir, chmod (<code>கோப்பு</code>).</td></tr>
+        <tr><td>0.79</td><td>Time parse, UTC/Local format, timers/tickers (<code>நேரம்</code>).</td></tr>
+        <tr><td>0.80</td><td>HTTP dial/connect timeout and relative redirect <code>Location</code>.</td></tr>
+        <tr><td>0.81</td><td>PostgreSQL backend for <code>தரவுத்தளம்</code> (libpq via <code>dlopen</code>).</td></tr>
       </tbody>
     </table>
   </div>
@@ -181,14 +185,13 @@
 
   <h3>HTTP/network backlog</h3>
   <ul>
-    <li>Dial and DNS timeouts.</li>
-    <li>Relative redirects.</li>
+    <li>DNS-bounded timeouts.</li>
     <li>HTTPS/TLS, IPv6, proxies, pooling, streaming, compression, cookies.</li>
   </ul>
 
   <h3>Database backlog</h3>
   <ul>
-    <li>PostgreSQL and MySQL implementations of the internal backend vtable.</li>
+    <li>MySQL implementation of the internal backend vtable.</li>
     <li>Connection pooling and safe concurrent sharing of one database handle.</li>
     <li>A stable public driver/plugin ABI, ORM, migrations, and reflection-like row mapping.</li>
   </ul>
@@ -197,18 +200,18 @@
   <ol>
     <li><strong>NASM x86-64:</strong> introduce a small target-neutral IR and emit Linux ELF through NASM.</li>
     <li><strong>i386 Linux:</strong> add a second native architecture after x86-64 stabilizes.</li>
-    <li><strong>SQL backends:</strong> first-party PostgreSQL/MySQL implementations of the internal vtable when needed; pooling and concurrent handle policy later.</li>
+    <li><strong>SQL backends:</strong> MySQL when needed; pooling and concurrent handle policy later.</li>
     <li><strong>Optional backlog:</strong> networking leftovers and interfaces only when concrete use cases justify them.</li>
     <li><strong>Larger Go-inspired features:</strong> richer generics/constraints only if they earn their complexity.</li>
   </ol>
   <p>The current C backend remains the semantic reference while the native backend begins.</p>
 
   <h2 id="public">Public project status</h2>
-  <p>Niraluli v0.77 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
+  <p>Niraluli v0.81 is suitable for public release as an <strong>experimental research compiler</strong>. It should not be described as production-ready.</p>
   <p>Licensing: the repository is under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> (<code>LICENSE</code> + <code>NOTICE</code>). See also <a href="misc.html#license">Misc → License</a>.</p>
   <p>Remaining public-release hygiene:</p>
   <ul>
-    <li>Add CI that runs <code>go test ./...</code>, including loopback socket and SQLite runtime tests.</li>
+    <li>Add CI that runs <code>go test ./...</code>, including loopback socket and SQL runtime tests (SQLite; Postgres when available).</li>
     <li>Document contribution and security-reporting expectations.</li>
     <li>Keep platform/protocol/database limitations prominent.</li>
   </ul>

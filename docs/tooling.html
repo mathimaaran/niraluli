@@ -114,10 +114,14 @@ stdlib/வடிவம்/          fmt-style formatting public declarations
 grammar/tamil/          EBNF, keyword glossary, construct cards
 corpus/tamil/           valid/invalid examples and integration programs
   தரவுத்தளம்/           SQLite API sample
+  தரவுத்தளம்_postgres/  PostgreSQL backend sample
   ஊழியர்_முழுஅடுக்கு/   Niraluli REST + React + SQLite full-stack demo
   கோப்பு/               file open/read/write sample
+  கோப்பு_தேடல்/         seek / mkdir / readdir / chmod
   நேரம்/                now/sleep/format sample
+  நேரம்_மேம்படு/        parse / locations / timers
   வடிவமைப்பு/           Sprintf-style formatting sample
+  வலை_நேரமுடிவு/        HTTP dial/connect timeout
 notes/                  roadmap, design decisions, deferred inventory
 tools/                  portable toolchain helpers
 docs/                   this static developer documentation
@@ -130,12 +134,13 @@ LICENSE / NOTICE        Apache License 2.0 + copyright attribution</code></pre>
     <li>Lexer/parser/checker unit and corpus tests.</li>
     <li>C emitter structural and compile/run tests.</li>
     <li>Runtime tests for strings, slices, maps, defer, panic, concurrency, and GC.</li>
-    <li>Package-loader integration tests for TCP, UDP, HTTP loopback behavior, and SQL (<code>TestDatabaseProgram</code>).</li>
+    <li>Package-loader integration tests for TCP, UDP, HTTP loopback behavior, SQL (SQLite; Postgres when available), and file/time polish corpora.</li>
   </ul>
-  <p>Network integration tests bind loopback/ephemeral ports. Database tests require a runtime SQLite shared library. Run them in an environment that allows local sockets and can resolve <code>libsqlite3.so.0</code>.</p>
+  <p>Network integration tests bind loopback/ephemeral ports. UDP tests skip when <code>SOCK_DGRAM</code> is denied. Database tests require a runtime SQLite shared library; Postgres tests skip without libpq/DSN. Run them in an environment that allows local sockets and can resolve <code>libsqlite3.so.0</code>.</p>
   <pre><code>go test ./internal/load -run TestDatabaseProgram -count=1
 go test ./internal/load -run TestUDPProgram -count=3
-go test ./internal/load -run TestHTTPRedirectOptions -count=1</code></pre>
+go test ./internal/load -run TestHTTPRedirectOptions -count=1
+go test ./internal/load -run 'TestFileSeekProgram|TestTimePolishProgram|TestHTTPDialTimeout|TestPostgresBackendProgram' -count=1</code></pre>
 
   <h2 id="adding">Adding a language feature</h2>
   <p>The project uses closed Tamil-0.x slices. A typical feature should update all affected layers:</p>

@@ -31,7 +31,7 @@
     <a class="brand" href="index.html">
       <span class="brand-mark">நிரலுளி</span>
       <span>Niraluli docs</span>
-      <span class="version">v0.77</span>
+      <span class="version">v0.81</span>
     </a>
     <div class="top-actions">
       <button class="icon-button menu-button" type="button" aria-label="Open navigation">☰</button>
@@ -60,7 +60,7 @@
 
   const footer = document.createElement("footer");
   footer.className = "site-footer";
-  footer.innerHTML = `Niraluli v0.77 developer documentation · Experimental Linux/C compiler`;
+  footer.innerHTML = `Niraluli v0.81 developer documentation · Experimental Linux/C compiler`;
   document.body.append(footer);
 
   const savedTheme = localStorage.getItem("uli-doc-theme");

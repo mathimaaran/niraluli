@@ -319,13 +319,15 @@ No new syntax. Stdlib package `வலை` (`கொணர் "வலை"`): `க�
 `தகவல்கேள்` / `தகவல்முகவரி` / `தகவலனுப்பு` / `தகவல்பெறு` /
 `தகவல்விடு`. IPv4, Linux C backend. See `constructs/net.yaml`.
 
-## HTTP (Tamil-0.61)
+## HTTP (Tamil-0.61 / 0.80)
 
 No new syntax. Stdlib package `பரிமாற்றம்` (`கொணர் "பரிமாற்றம்"`):
 server (`கோரிக்கை` / `பதிலளிப்பு` / `கையாளு` / `வழிப்படுத்தி`,
 `எழுது` / `எழுதுசரம்` / `எழுதுதலைப்புகள்` / `எழுதுசரந்தலைப்புகள்`,
 `சேவைஒன்று` / `கேட்டுசேவை` / `வழிசேவை`), and client (`பதில்`, `பெறு` /
-`பதிவிடு` / `கோரு` / `கோருவிருப்பம்`). See `constructs/http.yaml`.
+`பதிவிடு` / `கோரு` / `கோருவிருப்பம்`). Tamil-0.80: `நேரமுடிவு` covers
+dial/connect plus I/O; relative redirect `Location` is resolved.
+See `constructs/http.yaml`.
 
 ## SQL databases (Tamil-0.62 / 0.81)
 

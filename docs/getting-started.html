@@ -37,7 +37,7 @@
     <li>GCC or Clang-compatible <code>cc</code> to compile generated C.</li>
     <li>pthread support for concurrency and the runtime.</li>
     <li><code>libdl</code> (<code>-ldl</code>) for dynamic loading used by the SQL runtime.</li>
-    <li>For database programs: a runtime SQLite shared library such as <code>libsqlite3.so.0</code> (Debian/Ubuntu: <code>libsqlite3-0</code>). Headers and <code>-lsqlite3</code> are not required to build.</li>
+    <li>For database programs: runtime <code>libsqlite3.so.0</code> (Debian/Ubuntu: <code>libsqlite3-0</code>). Optional Postgres: <code>libpq.so.5</code> (<code>libpq5</code>). Headers and <code>-lsqlite3</code>/<code>-lpq</code> are not required to build.</li>
     <li>A UTF-8 editor with a Tamil font such as Noto Sans Tamil.</li>
   </ul>
 
@@ -149,10 +149,14 @@ go run ./cmd/uli run project/தொடக்கம்.uli project/helpers.uli</c
       <tbody>
         <tr><td><code>corpus/tamil/வணக்கம்.uli</code></td><td>Minimal hello program</td></tr>
         <tr><td><code>corpus/tamil/தரவுத்தளம்/</code></td><td>SQLite open, create, prepare, bind, query, and unsupported-driver error</td></tr>
+        <tr><td><code>corpus/tamil/தரவுத்தளம்_postgres/</code></td><td>PostgreSQL backend (needs libpq + DSN)</td></tr>
         <tr><td><code>corpus/tamil/ஊழியர்_முழுஅடுக்கு/</code></td><td>Niraluli HTTP REST + SQLite employees DB + React UI (see <code>SETUP.md</code>)</td></tr>
         <tr><td><code>corpus/tamil/கோப்பு/</code></td><td>File write/read helpers, create/open/close, missing-path error</td></tr>
+        <tr><td><code>corpus/tamil/கோப்பு_தேடல்/</code></td><td>Seek, mkdir, readdir, chmod</td></tr>
         <tr><td><code>corpus/tamil/நேரம்/</code></td><td>Sleep, elapsed duration, Unix instant, RFC3339 format</td></tr>
-        <tr><td><code>corpus/tamil/வடிவமைப்பு/</code></td><td>fmt-style <code>%s</code> formatting, join, missing-arg marker</td></tr>
+        <tr><td><code>corpus/tamil/நேரம்_மேம்படு/</code></td><td>Parse, locations, timers, tickers</td></tr>
+        <tr><td><code>corpus/tamil/வலை_நேரமுடிவு/</code></td><td>HTTP dial/connect timeout</td></tr>
+        <tr><td><code>corpus/tamil/வடிவமைப்பு/</code></td><td>fmt-style formatting including typed verbs</td></tr>
       </tbody>
     </table>
   </div>

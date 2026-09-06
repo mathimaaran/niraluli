@@ -39,7 +39,8 @@ examples:
       c, _ := net.Dial("tcp", ln.Addr().String())
 notes:
   - "Tamil-0.55: package வலை; TCP IPv4; *பிழை operational errors."
-  - "Tamil-0.61: IPv4 UDP datagrams via தகவல்தளம்."
+  - "Tamil-0.61: IPv4 UDP datagrams via தகவல்கேள்/தகவலனுப்பு/தகவல்பெறு."
+  - "Corpus தகவல்_வலை checks listen errors; TestUDPProgram skips when SOCK_DGRAM is denied."
   - "விடு = close conn; நிறுத்து = stop listener (மூடு is the chan keyword)."
   - "கேள் = listen; ஏற்று = accept; இணை = dial/connect; படி/எழுது = read/write."
   - "Stdlib path: stdlib/வலை/; dummy .uli signatures, C intrinsics in emitc."
