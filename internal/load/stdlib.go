@@ -9,6 +9,16 @@ import (
 
 // StdlibRoot is the compiler stdlib directory (repo stdlib/).
 func StdlibRoot() string {
+	if root := os.Getenv("NIRALULI_ROOT"); root != "" {
+		return filepath.Clean(filepath.Join(root, "stdlib"))
+	}
+	if exe, err := os.Executable(); err == nil {
+		// Prefer install layout: <root>/bin/uli → <root>/stdlib
+		cand := filepath.Clean(filepath.Join(filepath.Dir(exe), "..", "stdlib"))
+		if st, err := os.Stat(cand); err == nil && st.IsDir() {
+			return cand
+		}
+	}
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		return ""

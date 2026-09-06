@@ -28,23 +28,48 @@ Linux (x86-64 first, then i386), with NASM as a later backend.
 corpus/tamil/வணக்கம்.uli
 ```
 
+## Release packages (v0.81)
+
+GitHub Releases publish two Linux **x86_64** artifacts (each bundles portable **Go 1.22**):
+
+| File | Use |
+|------|-----|
+| `niraluli-0.81-source.zip` | Unzip and develop from source (`source tools/env.sh`) |
+| `niraluli-0.81-1.x86_64.rpm` | Install under `/opt/niraluli` with `/usr/bin/uli` |
+
+```bash
+# Source zip
+unzip niraluli-0.81-source.zip
+cd niraluli-0.81
+source tools/env.sh
+go run ./cmd/uli run corpus/tamil/வணக்கம்.uli
+
+# RPM (Fedora/RHEL/openSUSE, or alien on Debian)
+sudo rpm -Uvh niraluli-0.81-1.x86_64.rpm
+uli run /opt/niraluli/corpus/tamil/வணக்கம்.uli
+```
+
+Rebuild locally with `./tools/package-release.sh` (needs `zip`, `rpmbuild`, and network only if `.tools/go` is missing).
+
+A **C compiler** (`gcc`/`clang`) is still required for `uli run` / `uli build`. Go is bundled; `gcc` is not.
+
 ## After downloading (release zip or clone)
 
-Niraluli ships as **source**, not a prebuilt installer. Unzip or clone on **Linux**, then install only what you need for the path below.
+Unzip a release, install the RPM, or clone on **Linux**, then ensure a C toolchain is available.
 
 ### Always required (compile and run Niraluli)
 
 | Need | Why | Typical install (Ubuntu/Debian) |
 |------|-----|----------------------------------|
 | Linux | Supported runtime target | — |
-| Go toolchain | Hosts the Niraluli compiler (`cmd/uli`) | System Go, or `source tools/env.sh` / `./tools/run-go.sh` |
+| Go toolchain | Hosts the Niraluli compiler (`cmd/uli`) | Bundled in release zip/RPM, or system Go / `source tools/env.sh` |
 | GCC or Clang (`cc`) | Compiles generated C | `sudo apt install build-essential` |
 | pthread + `libdl` (`-ldl`) | Runtime / SQL dynamic loading | Usually included with the toolchain |
 
 Minimal try-out:
 
 ```bash
-cd uli-0.62   # or your unzipped / cloned directory name
+cd niraluli-0.81   # or your unzipped / cloned directory name
 source tools/env.sh   # only if you do not already have `go` on PATH
 go run ./cmd/uli run corpus/tamil/வணக்கம்.uli
 ```

@@ -1,0 +1,7 @@
+#!/bin/sh
+# System entry point for the Niraluli RPM install.
+ROOT=/opt/niraluli
+export NIRALULI_ROOT="$ROOT"
+export GOROOT="$ROOT/.tools/go"
+export PATH="$GOROOT/bin:$PATH"
+exec "$ROOT/bin/uli" "$@"
