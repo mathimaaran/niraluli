@@ -1,0 +1,20 @@
+Package: niraluli
+Version: 0.81-1
+Section: devel
+Priority: optional
+Architecture: amd64
+Maintainer: Niraluli Maintainers <noreply@niraluli.dev>
+Depends: libc6
+Recommends: gcc | clang, build-essential
+Homepage: https://github.com/mathimaaran/niraluli
+Description: Niraluli programming language with bundled Go toolchain
+ Niraluli (நிரலுளி) is a Go-inspired programming language with semantic
+ Tamil keywords and a C/Linux backend.
+ .
+ This package installs the compiler tree, stdlib, docs, corpus samples, a
+ portable Go 1.22 toolchain, and a prebuilt /opt/niraluli/bin/uli under
+ /opt/niraluli. The /usr/bin/uli wrapper sets NIRALULI_ROOT and GOROOT.
+ .
+ A C compiler (gcc or clang) is still required to compile and run programs
+ via `uli run` / `uli build`. Optional SQL backends need libsqlite3 and/or
+ libpq at runtime.

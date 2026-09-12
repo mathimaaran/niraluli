@@ -30,32 +30,37 @@ corpus/tamil/வணக்கம்.uli
 
 ## Release packages (v0.81)
 
-GitHub Releases publish two Linux **x86_64** artifacts (each bundles portable **Go 1.22**):
+GitHub Releases publish Linux **x86_64** artifacts (each bundles portable **Go 1.22**):
 
 | File | Use |
 |------|-----|
 | `niraluli-0.81-source.zip` | Unzip and develop from source (`source tools/env.sh`) |
-| `niraluli-0.81-1.x86_64.rpm` | Install under `/opt/niraluli` with `/usr/bin/uli` |
+| `niraluli_0.81-1_amd64.deb` | Debian/Ubuntu/Zorin: `sudo apt install ./niraluli_0.81-1_amd64.deb` |
+| `niraluli-0.81-1.x86_64.rpm` | Fedora/RHEL/openSUSE: `sudo rpm -Uvh …` |
 
 ```bash
+# Debian / Ubuntu / Zorin
+sudo apt install ./niraluli_0.81-1_amd64.deb
+uli run /opt/niraluli/corpus/tamil/வணக்கம்.uli
+
 # Source zip
 unzip niraluli-0.81-source.zip
 cd niraluli-0.81
 source tools/env.sh
 go run ./cmd/uli run corpus/tamil/வணக்கம்.uli
 
-# RPM (Fedora/RHEL/openSUSE, or alien on Debian)
+# RPM (Fedora/RHEL/openSUSE)
 sudo rpm -Uvh niraluli-0.81-1.x86_64.rpm
 uli run /opt/niraluli/corpus/tamil/வணக்கம்.uli
 ```
 
-Rebuild locally with `./tools/package-release.sh` (needs `zip`, `rpmbuild`, and network only if `.tools/go` is missing).
+Rebuild locally with `./tools/package-release.sh` (needs `zip`, `dpkg-deb`/`fakeroot`; `rpmbuild` optional; network only if `.tools/go` is missing).
 
 A **C compiler** (`gcc`/`clang`) is still required for `uli run` / `uli build`. Go is bundled; `gcc` is not.
 
 ## After downloading (release zip or clone)
 
-Unzip a release, install the RPM, or clone on **Linux**, then ensure a C toolchain is available.
+Unzip a release, install the `.deb`/RPM, or clone on **Linux**, then ensure a C toolchain is available.
 
 ### Always required (compile and run Niraluli)
 

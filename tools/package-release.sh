@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Niraluli release artifacts: source.zip (with Go) and x86_64 RPM.
+# Build Niraluli release artifacts: source.zip (with Go), x86_64 RPM, and amd64 deb.
 # Usage (from repo root): ./tools/package-release.sh
 set -euo pipefail
 
@@ -14,13 +14,15 @@ GO_URL="https://go.dev/dl/${GO_TARBALL}"
 
 DIST="$ROOT/dist"
 STAGE="$DIST/stage/niraluli-${VERSION}"
-BUILDROOT="$DIST/rpm-buildroot"
+BUILDROOT="$DIST/pkg-buildroot"
+DEBROOT="$DIST/deb-root"
 ZIP_NAME="niraluli-${VERSION}-source.zip"
 RPM_NAME="niraluli-${VERSION}-${RELEASE}.x86_64.rpm"
+DEB_NAME="niraluli_${VERSION}-${RELEASE}_amd64.deb"
 
 echo "==> Niraluli ${VERSION} release packaging"
 
-rm -rf "$DIST/stage" "$BUILDROOT"
+rm -rf "$DIST/stage" "$BUILDROOT" "$DEBROOT"
 mkdir -p "$STAGE" "$DIST"
 
 # --- Portable Go -----------------------------------------------------------
@@ -77,8 +79,8 @@ mkdir -p "$STAGE/bin"
   go build -o bin/uli ./cmd/uli
 )
 
-# --- RPM buildroot ---------------------------------------------------------
-echo "==> assembling RPM buildroot"
+# --- Shared install layout -------------------------------------------------
+echo "==> assembling package layout"
 mkdir -p "$BUILDROOT/opt" "$BUILDROOT/usr/bin"
 cp -a "$STAGE" "$BUILDROOT/opt/niraluli"
 install -m 755 "$ROOT/packaging/uli.wrapper" "$BUILDROOT/usr/bin/uli"
@@ -86,6 +88,25 @@ install -m 755 "$ROOT/packaging/uli.wrapper" "$BUILDROOT/usr/bin/uli"
 SUMMARY="Niraluli programming language with bundled Go toolchain"
 DESCRIPTION="Niraluli (நிரலுளி) is a Go-inspired programming language with semantic Tamil keywords and a C/Linux backend. This package installs the compiler tree, stdlib, docs, corpus samples, a portable Go 1.22 toolchain, and a prebuilt /opt/niraluli/bin/uli under /opt/niraluli. A C compiler (gcc or clang) is still required for uli run / uli build."
 
+# --- Debian package --------------------------------------------------------
+echo "==> building $DEB_NAME"
+mkdir -p "$DEBROOT/DEBIAN"
+cp -a "$BUILDROOT/opt" "$BUILDROOT/usr" "$DEBROOT/"
+cp "$ROOT/packaging/debian/control" "$DEBROOT/DEBIAN/control"
+# Keep Version in control in sync with VERSION/RELEASE when overridden.
+sed -i "s/^Version:.*/Version: ${VERSION}-${RELEASE}/" "$DEBROOT/DEBIAN/control"
+# Installed-Size in KiB
+installed_kb="$(du -sk "$DEBROOT" | awk '{print $1}')"
+if grep -q '^Installed-Size:' "$DEBROOT/DEBIAN/control"; then
+  sed -i "s/^Installed-Size:.*/Installed-Size: ${installed_kb}/" "$DEBROOT/DEBIAN/control"
+else
+  sed -i "/^Architecture:/a Installed-Size: ${installed_kb}" "$DEBROOT/DEBIAN/control"
+fi
+chmod 755 "$DEBROOT/DEBIAN"
+find "$DEBROOT/opt" "$DEBROOT/usr" -type d -exec chmod 755 {} +
+fakeroot dpkg-deb --build "$DEBROOT" "$DIST/$DEB_NAME"
+
+# --- RPM -------------------------------------------------------------------
 if command -v rpmbuild >/dev/null 2>&1; then
   echo "==> rpmbuild available; using packaging/niraluli.spec"
   RPM_TOP="$DIST/rpmbuild"
@@ -124,5 +145,5 @@ fi
 
 echo
 echo "Artifacts:"
-ls -lh "$DIST/$ZIP_NAME" "$DIST/$RPM_NAME"
+ls -lh "$DIST/$ZIP_NAME" "$DIST/$RPM_NAME" "$DIST/$DEB_NAME"
 echo "done."
