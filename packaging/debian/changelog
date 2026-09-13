@@ -1,0 +1,10 @@
+niraluli (0.81-1) unstable; urgency=medium
+
+  * Tamil-0.81 release.
+  * File I/O: seek, mkdir, readdir, chmod (கோப்பு).
+  * Time: RFC3339 parse, UTC/Local format, timers/tickers (நேரம்).
+  * HTTP: dial/connect timeout and relative redirect Location.
+  * SQL: PostgreSQL backend via libpq dlopen (தரவுத்தளம்).
+  * Package bundles portable Go 1.22; gcc/clang still required to run builds.
+
+ -- Niraluli Maintainers <noreply@niraluli.dev>  Sat, 06 Sep 2026 06:30:00 +0000

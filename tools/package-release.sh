@@ -81,9 +81,18 @@ mkdir -p "$STAGE/bin"
 
 # --- Shared install layout -------------------------------------------------
 echo "==> assembling package layout"
-mkdir -p "$BUILDROOT/opt" "$BUILDROOT/usr/bin"
+mkdir -p "$BUILDROOT/opt" "$BUILDROOT/usr/bin" \
+  "$BUILDROOT/usr/share/metainfo" \
+  "$BUILDROOT/usr/share/doc/niraluli"
 cp -a "$STAGE" "$BUILDROOT/opt/niraluli"
 install -m 755 "$ROOT/packaging/uli.wrapper" "$BUILDROOT/usr/bin/uli"
+install -m 644 "$ROOT/packaging/metainfo/dev.niraluli.uli.metainfo.xml" \
+  "$BUILDROOT/usr/share/metainfo/dev.niraluli.uli.metainfo.xml"
+install -m 644 "$ROOT/packaging/debian/changelog" \
+  "$BUILDROOT/usr/share/doc/niraluli/changelog.Debian"
+gzip -9n -f "$BUILDROOT/usr/share/doc/niraluli/changelog.Debian"
+install -m 644 "$ROOT/packaging/debian/copyright" \
+  "$BUILDROOT/usr/share/doc/niraluli/copyright"
 
 SUMMARY="Niraluli programming language with bundled Go toolchain"
 DESCRIPTION="Niraluli (நிரலுளி) is a Go-inspired programming language with semantic Tamil keywords and a C/Linux backend. This package installs the compiler tree, stdlib, docs, corpus samples, a portable Go 1.22 toolchain, and a prebuilt /opt/niraluli/bin/uli under /opt/niraluli. A C compiler (gcc or clang) is still required for uli run / uli build."

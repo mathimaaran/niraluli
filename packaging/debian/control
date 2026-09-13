@@ -7,6 +7,7 @@ Maintainer: Niraluli Maintainers <noreply@niraluli.dev>
 Depends: libc6
 Recommends: gcc | clang, build-essential
 Homepage: https://github.com/mathimaaran/niraluli
+License: Apache-2.0
 Description: Niraluli programming language with bundled Go toolchain
  Niraluli (நிரலுளி) is a Go-inspired programming language with semantic
  Tamil keywords and a C/Linux backend.

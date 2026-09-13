@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AppStream metadata for GNOME Software / Software Install.
+  https://www.freedesktop.org/software/appstream/docs/
+-->
+<component type="console-application">
+  <id>dev.niraluli.uli</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>Niraluli</name>
+  <name xml:lang="ta">நிரலுளி</name>
+  <summary>Go-inspired programming language with Tamil keywords</summary>
+  <summary xml:lang="ta">தமிழ் முக்கியச்சொற்களுடன் Go-பாணி நிரல்மொழி</summary>
+  <description>
+    <p>
+      Niraluli (நிரலுளி) is an experimental Go-inspired programming language
+      with semantic Tamil keywords and a Linux/C backend. This package installs
+      the compiler under /opt/niraluli, a portable Go 1.22 toolchain, and the
+      /usr/bin/uli wrapper.
+    </p>
+    <p>
+      A C compiler (gcc or clang) is required for uli run and uli build.
+      Optional SQL backends need libsqlite3 and/or libpq at runtime.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/mathimaaran/niraluli</url>
+  <url type="help">https://mathimaaran.github.io/niraluli/</url>
+  <url type="bugtracker">https://github.com/mathimaaran/niraluli/issues</url>
+  <developer id="dev.niraluli">
+    <name>Mathi Maaran</name>
+  </developer>
+  <provides>
+    <binary>uli</binary>
+  </provides>
+  <releases>
+    <release version="0.81" date="2026-09-06" urgency="medium">
+      <description>
+        <p>Tamil-0.81 stdlib polish and Debian/RPM/source packages with bundled Go 1.22.</p>
+        <ul>
+          <li>File I/O: seek, mkdir, readdir, chmod</li>
+          <li>Time: RFC3339 parse, UTC/Local format, timers and tickers</li>
+          <li>HTTP: dial/connect timeout and relative redirect Location</li>
+          <li>SQL: PostgreSQL backend via libpq dlopen</li>
+        </ul>
+      </description>
+      <url>https://github.com/mathimaaran/niraluli/releases/tag/v0.81</url>
+    </release>
+  </releases>
+  <categories>
+    <category>Development</category>
+    <category>Building</category>
+  </categories>
+  <content_rating type="oars-1.1" />
+</component>
